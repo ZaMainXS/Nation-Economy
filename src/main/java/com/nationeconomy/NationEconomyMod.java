@@ -1,13 +1,17 @@
 package com.nationeconomy;
 
+import com.nationeconomy.combat.CombatManager;
 import com.nationeconomy.economy.EconomyCommands;
 import com.nationeconomy.economy.EconomyManager;
+import com.nationeconomy.gui.GuideGui;
 import com.nationeconomy.nation.BorderNotifier;
 import com.nationeconomy.nation.ClaimProtection;
+import com.nationeconomy.nation.CoreManager;
 import com.nationeconomy.nation.NationChat;
 import com.nationeconomy.nation.NationCommands;
 import com.nationeconomy.nation.NationManager;
 import com.nationeconomy.nation.NationTeams;
+import com.nationeconomy.nation.RaidManager;
 import com.nationeconomy.shop.ShopCommands;
 import com.nationeconomy.shop.ShopManager;
 import com.nationeconomy.util.KnownPlayers;
@@ -30,10 +34,16 @@ import java.nio.file.Path;
  *
  * <ul>
  *     <li>an EconomyShopGUI-style shop ({@code /shop}, {@code /sell},
- *     {@code /sellall}, {@code /sellhelditem}) with op-managed categories, and</li>
+ *     {@code /sellall}, {@code /sellhelditem}) with an op admin GUI
+ *     ({@code /shopadmin}), quick admin commands ({@code /economycategory},
+ *     {@code /economyhanditem}, {@code /sreload}),</li>
  *     <li>a nations plugin: create nations, claim land with a golden shovel,
- *     per-player land permissions, nation colors shown in chat/tab, and a
- *     territory map.</li>
+ *     per-player land permissions, nation colors in chat/tab, a territory
+ *     map, nation homes,</li>
+ *     <li>a combat-tag system (no shop/home while tagged, death on
+ *     combat-logging, persistent timers), and</li>
+ *     <li>raiding: 1,000 hits per protected block and destroyable nation
+ *     cores (10,000 hits) with the craftable Core Healer.</li>
  * </ul>
  *
  * Everything runs on the server; vanilla clients can connect.
@@ -61,6 +71,7 @@ public class NationEconomyMod implements DedicatedServerModInitializer {
             EconomyCommands.register(dispatcher, registryAccess);
             ShopCommands.register(dispatcher, registryAccess);
             NationCommands.register(dispatcher, registryAccess);
+            GuideGui.register(dispatcher);
         });
 
         // ------------------------------------------------------- data files
@@ -75,7 +86,10 @@ public class NationEconomyMod implements DedicatedServerModInitializer {
             EconomyManager.get().load(dataDir);
             ShopManager.get().load(dataDir);
             NationManager.get().load(dataDir);
+            RaidManager.get().load(dataDir);
+            CombatManager.load(dataDir);
             NationTeams.rebuild(server);
+            CoreManager.relinkAll(server);
         });
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> saveAll());
 
@@ -92,6 +106,7 @@ public class NationEconomyMod implements DedicatedServerModInitializer {
         // ------------------------------------------------------------ tick
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             BorderNotifier.tick(server);
+            CoreManager.tick(server);
             if (server.getTicks() % AUTOSAVE_INTERVAL == 0) {
                 saveDirty();
             }
@@ -100,6 +115,7 @@ public class NationEconomyMod implements DedicatedServerModInitializer {
         // --------------------------------------------------- events & chat
         NationChat.register();
         ClaimProtection.register();
+        CombatManager.register();
     }
 
     private static void saveDirty() {
@@ -107,6 +123,8 @@ public class NationEconomyMod implements DedicatedServerModInitializer {
         EconomyManager.get().saveIfDirty();
         ShopManager.get().saveIfDirty();
         NationManager.get().saveIfDirty();
+        RaidManager.get().saveIfDirty();
+        CombatManager.saveIfDirty();
     }
 
     private static void saveAll() {
@@ -114,6 +132,8 @@ public class NationEconomyMod implements DedicatedServerModInitializer {
         EconomyManager.get().save();
         ShopManager.get().save();
         NationManager.get().save();
+        RaidManager.get().save();
+        CombatManager.save();
         LOGGER.info("Saved Nation & Economy data.");
     }
 }

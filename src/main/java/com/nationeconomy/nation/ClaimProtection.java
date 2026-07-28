@@ -108,10 +108,45 @@ public final class ClaimProtection {
             return ActionResult.FAIL; // never break blocks with the tool
         }
 
-        if (allowed(serverPlayer, world, pos, NationPermission.BREAK)) {
+        String worldId = world.getRegistryKey().getValue().toString();
+        Nation nation = NationManager.get().claimAt(worldId, pos.getX(), pos.getZ());
+        if (nation == null) {
+            return ActionResult.PASS; // wilderness
+        }
+        if (nation.hasPermission(serverPlayer.getUuid(), NationPermission.BREAK) || isOperatorBypass(serverPlayer)) {
             return ActionResult.PASS;
         }
-        deny(serverPlayer, world, pos);
+
+        // Raiding: outsiders can break in, but every block takes 1000 hits.
+        return raidHit(serverPlayer, world, pos, nation);
+    }
+
+    /** Counts one raid hit against a protected block; breaks it after {@link RaidManager#RAID_HITS}. */
+    private static ActionResult raidHit(ServerPlayerEntity player, World world, BlockPos pos, Nation nation) {
+        String worldId = world.getRegistryKey().getValue().toString();
+
+        if (world.getBlockState(pos).getHardness(world, pos) < 0) {
+            player.sendMessage(Text.literal("This block cannot be raided.").formatted(Formatting.RED), true);
+            return ActionResult.FAIL;
+        }
+
+        int hits = RaidManager.get().hit(worldId, pos);
+        if (hits >= RaidManager.RAID_HITS) {
+            RaidManager.get().clear(worldId, pos);
+            world.breakBlock(pos, true, player);
+            player.sendMessage(Text.literal("You broke through " + nation.getName() + "'s defenses!")
+                    .formatted(Formatting.GOLD), false);
+            return ActionResult.FAIL;
+        }
+
+        if (hits == 1 || hits % 25 == 0 || hits >= RaidManager.RAID_HITS - 10) {
+            player.sendMessage(Text.literal("Raiding " + nation.getName() + ": " + hits + "/"
+                    + RaidManager.RAID_HITS + " hits").formatted(Formatting.RED), true);
+        }
+        if (hits % 25 == 0 && world instanceof ServerWorld serverWorld) {
+            serverWorld.spawnParticles(ParticleTypes.CRIT,
+                    pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 5, 0.3, 0.3, 0.3, 0.02);
+        }
         return ActionResult.FAIL;
     }
 
@@ -214,6 +249,10 @@ public final class ClaimProtection {
         if (world.isClient() || !(player instanceof ServerPlayerEntity serverPlayer)) {
             return ActionResult.PASS;
         }
+        // Nation core: right-click with a Core Healer (or peek at its health).
+        if (CoreManager.handleUse(serverPlayer, entity, hand)) {
+            return ActionResult.FAIL;
+        }
         if (allowed(serverPlayer, world, entity.getBlockPos(), NationPermission.USE)) {
             return ActionResult.PASS;
         }
@@ -225,6 +264,10 @@ public final class ClaimProtection {
                                                @Nullable EntityHitResult hitResult) {
         if (world.isClient() || !(player instanceof ServerPlayerEntity serverPlayer)) {
             return ActionResult.PASS;
+        }
+        // Nation core: raid hits count towards destroying it.
+        if (CoreManager.handleAttack(serverPlayer, entity)) {
+            return ActionResult.FAIL;
         }
         if (allowed(serverPlayer, world, entity.getBlockPos(), NationPermission.USE)) {
             return ActionResult.PASS;

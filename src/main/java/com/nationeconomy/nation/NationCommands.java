@@ -8,54 +8,44 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.suggestion.Suggestions;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import com.nationeconomy.combat.CombatManager;
 import com.nationeconomy.util.ColorUtils;
 import com.nationeconomy.util.KnownPlayers;
 import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.CommandSource;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.registry.RegistryKey;
+import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * All nation commands:
- *
- * <pre>
- * /nation create &lt;name&gt;              - found a nation
- * /nation join &lt;name&gt;                - join an existing nation
- * /nation leave                       - leave your nation
- * /nation disband                     - delete your nation (leader)
- * /nation banish &lt;player&gt;            - kick &amp; ban a player (leader)
- * /nation unbanish &lt;player&gt;          - lift a ban (leader)
- * /nation allow access &lt;player&gt; &lt;break|place|chest|use|all&gt; - grant land permissions (leader)
- * /nation deny access &lt;player&gt; &lt;...&gt;                        - revoke them again (leader)
- * /nation trusted                     - list who has access
- * /nation color &lt;color&gt;             - change the nation color (leader), any named or #RRGGBB color
- * /nation colors                      - list all color names
- * /nation info [nation]               - nation details + claimed land
- * /nation list                        - all nations
- * /nation members                     - member list
- * /nation map [radius]                - chat-based territory map
- * /nation upgrade                     - spend 1 netherite ingot: +100 claim blocks
- * /nation unclaim                     - unclaim the land you stand in (leader)
- *
- * /claimland                          - get the land claim shovel
- * /claimland confirm                  - claim the selected area
- * /claimland cancel                   - clear the selection
- * /claimland info                     - selection summary
- * </pre>
+ * All nation commands — founding, membership, land permissions, colors,
+ * map, homes, upgrades, the disband confirmation flow and the claim shovel.
  */
 public final class NationCommands {
 
     private static final String NAME_PATTERN = "[A-Za-z0-9_]{3,16}";
+
+    /** Pending disband confirmations: owner uuid -> timestamp. */
+    private static final Map<UUID, Long> PENDING_DISBAND = new ConcurrentHashMap<>();
+    private static final long DISBAND_CONFIRM_MILLIS = 15_000;
 
     private NationCommands() {
     }
@@ -71,7 +61,9 @@ public final class NationCommands {
                         .suggests(NationCommands::suggestNations)
                         .executes(NationCommands::join)));
         nation.then(CommandManager.literal("leave").executes(NationCommands::leave));
-        nation.then(CommandManager.literal("disband").executes(NationCommands::disband));
+        nation.then(CommandManager.literal("disband")
+                .executes(NationCommands::disbandRequest)
+                .then(CommandManager.literal("confirm").executes(NationCommands::disbandConfirm)));
         nation.then(CommandManager.literal("banish")
                 .then(CommandManager.argument("player", StringArgumentType.word())
                         .suggests(NationCommands::suggestPlayers)
@@ -98,6 +90,18 @@ public final class NationCommands {
                         .suggests((ctx, builder) -> CommandSource.suggestMatching(ColorUtils.namedColors().keySet(), builder))
                         .executes(NationCommands::color)));
         nation.then(CommandManager.literal("colors").executes(NationCommands::colors));
+        nation.then(CommandManager.literal("sethome")
+                .executes(ctx -> setHome(ctx, -1))
+                .then(CommandManager.argument("slot", IntegerArgumentType.integer(1, Nation.MAX_HOMES))
+                        .executes(ctx -> setHome(ctx, IntegerArgumentType.getInteger(ctx, "slot") - 1))));
+        nation.then(CommandManager.literal("home")
+                .executes(ctx -> home(ctx, 0))
+                .then(CommandManager.argument("slot", IntegerArgumentType.integer(1, Nation.MAX_HOMES))
+                        .executes(ctx -> home(ctx, IntegerArgumentType.getInteger(ctx, "slot") - 1))));
+        nation.then(CommandManager.literal("delhome")
+                .then(CommandManager.argument("slot", IntegerArgumentType.integer(1, Nation.MAX_HOMES))
+                        .executes(NationCommands::delHome)));
+        nation.then(CommandManager.literal("homes").executes(NationCommands::homes));
         nation.then(CommandManager.literal("info")
                 .executes(NationCommands::infoSelf)
                 .then(CommandManager.argument("name", StringArgumentType.word())
@@ -139,7 +143,7 @@ public final class NationCommands {
     private static CompletableFuture<Suggestions> suggestPermissions(CommandContext<ServerCommandSource> ctx,
                                                                      SuggestionsBuilder builder) {
         return CommandSource.suggestMatching(
-                java.util.List.of("break", "place", "chest", "use", "all"), builder);
+                List.of("break", "place", "chest", "use", "all"), builder);
     }
 
     // ------------------------------------------------------------------ help
@@ -148,7 +152,7 @@ public final class NationCommands {
         ServerCommandSource source = ctx.getSource();
         source.sendFeedback(() -> Text.literal("—— Nation commands ——").formatted(Formatting.GOLD), false);
         String[][] lines = {
-                {"/nation create <name>", "found a nation"},
+                {"/nation create <name>", "found a nation (core spawns at your feet)"},
                 {"/nation join <name>", "join a nation"},
                 {"/nation leave", "leave your nation"},
                 {"/claimland", "get the land claim shovel"},
@@ -156,14 +160,15 @@ public final class NationCommands {
                 {"/nation color <color>", "change nation color (name or #RRGGBB)"},
                 {"/nation allow access <player> <perm>", "grant land access (leader)"},
                 {"/nation banish <player>", "kick & ban a player (leader)"},
+                {"/nation sethome / home / delhome", "up to 3 nation homes"},
                 {"/nation map", "view the territory map"},
                 {"/nation upgrade", "1 netherite ingot = +100 claim blocks"},
-                {"/nation upgrade | unclaim | info | list | members | disband", ""},
+                {"/nation disband", "delete your nation (asks to confirm)"},
+                {"/nationalexplain", "open the full guide GUI"},
         };
         for (String[] line : lines) {
             source.sendFeedback(() -> Text.literal(" " + line[0]).formatted(Formatting.YELLOW)
-                    .append(line[1].isEmpty() ? Text.empty()
-                            : Text.literal(" — " + line[1]).formatted(Formatting.DARK_GRAY)), false);
+                    .append(Text.literal(" — " + line[1]).formatted(Formatting.DARK_GRAY)), false);
         }
         return 1;
     }
@@ -175,8 +180,10 @@ public final class NationCommands {
         String name = StringArgumentType.getString(ctx, "name");
         NationManager manager = NationManager.get();
 
+        // One nation per player until theirs is destroyed/lost.
         if (manager.nationOf(player.getUuid()) != null) {
-            ctx.getSource().sendError(Text.literal("You are already in a nation. /nation leave first."));
+            ctx.getSource().sendError(Text.literal("You are already in a nation. You can only be in one — "
+                    + "leave it or wait until it is destroyed."));
             return 0;
         }
         if (!name.matches(NAME_PATTERN)) {
@@ -195,11 +202,18 @@ public final class NationCommands {
         Nation nation = new Nation(name, player.getUuid());
         manager.createNation(nation);
         NationTeams.applyToPlayer(ctx.getSource().getServer(), player);
+
+        // The nation core spawns where you stand — guard it with your life.
+        ServerWorld world = (ServerWorld) player.getWorld();
+        CoreManager.createCore(world, nation, player.getBlockPos());
         manager.save();
 
         player.sendMessage(Text.literal("You founded the nation ").formatted(Formatting.GREEN)
                 .append(ColorUtils.colored(name, nation.getRgb()))
-                .append(Text.literal("! Claim land with /claimland.").formatted(Formatting.GREEN)), false);
+                .append(Text.literal("!").formatted(Formatting.GREEN)), false);
+        player.sendMessage(Text.literal("Your Nation Core spawned here (10,000 hits). If raiders destroy it, "
+                        + "your nation falls — build defenses around it!")
+                .formatted(Formatting.YELLOW), false);
         ctx.getSource().getServer().getPlayerManager().broadcast(Text.empty()
                 .append(Text.literal(player.getName().getString()).formatted(Formatting.AQUA))
                 .append(Text.literal(" founded the nation ").formatted(Formatting.GRAY))
@@ -270,31 +284,63 @@ public final class NationCommands {
 
     // --------------------------------------------------------------- disband
 
-    private static int disband(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
+    private static int disbandRequest(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
         ServerPlayerEntity player = ctx.getSource().getPlayerOrThrow();
-        NationManager manager = NationManager.get();
-        Nation nation = manager.nationOf(player.getUuid());
+        Nation nation = NationManager.get().nationOf(player.getUuid());
         if (nation == null || !nation.isOwner(player.getUuid())) {
             ctx.getSource().sendError(Text.literal("Only the nation leader can disband the nation."));
             return 0;
         }
+        PENDING_DISBAND.put(player.getUuid(), System.currentTimeMillis());
+        player.sendMessage(Text.literal("⚠ Are you sure you want to disband ").formatted(Formatting.RED)
+                .append(ColorUtils.colored(nation.getName(), nation.getRgb()))
+                .append(Text.literal("? All land and the core will be lost forever.").formatted(Formatting.RED)), false);
+        player.sendMessage(Text.literal("Type /nation disband confirm within 15 seconds to proceed.")
+                .formatted(Formatting.YELLOW), false);
+        return 1;
+    }
+
+    private static int disbandConfirm(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
+        ServerPlayerEntity player = ctx.getSource().getPlayerOrThrow();
+        NationManager manager = NationManager.get();
+        Nation nation = manager.nationOf(player.getUuid());
+        if (nation == null || !nation.isOwner(player.getUuid())) {
+            ctx.getSource().sendError(Text.literal("You have no nation to disband."));
+            return 0;
+        }
+        Long requested = PENDING_DISBAND.remove(player.getUuid());
+        if (requested == null || System.currentTimeMillis() - requested > DISBAND_CONFIRM_MILLIS) {
+            player.sendMessage(Text.literal("No pending disband. Run /nation disband first.")
+                    .formatted(Formatting.RED), false);
+            return 0;
+        }
+        disbandNow(ctx.getSource().getServer(), manager, nation,
+                Text.literal(player.getName().getString()).formatted(Formatting.AQUA));
+        return 1;
+    }
+
+    /** Shared teardown used by the disband command. */
+    private static void disbandNow(net.minecraft.server.MinecraftServer server, NationManager manager,
+                                   Nation nation, Text who) {
         String name = nation.getName();
+        int rgb = nation.getRgb();
+        CoreManager.removeCore(server, nation);
+        nation.clearCore();
         manager.disband(nation);
-        NationTeams.removeTeam(ctx.getSource().getServer(), nation);
-        // Re-apply teams for any members currently online.
+        NationTeams.removeTeam(server, nation);
         for (UUID member : nation.getMembers()) {
-            ServerPlayerEntity online = ctx.getSource().getServer().getPlayerManager().getPlayer(member);
+            ServerPlayerEntity online = server.getPlayerManager().getPlayer(member);
             if (online != null) {
-                NationTeams.applyToPlayer(ctx.getSource().getServer(), online);
+                NationTeams.applyToPlayer(server, online);
                 online.sendMessage(Text.literal("Your nation " + name + " was disbanded.").formatted(Formatting.RED), false);
             }
         }
         manager.save();
-        ctx.getSource().getServer().getPlayerManager().broadcast(Text.literal("The nation ")
-                .formatted(Formatting.GRAY)
-                .append(ColorUtils.colored(name, nation.getRgb()))
-                .append(Text.literal(" was disbanded. Its land is wilderness again.").formatted(Formatting.GRAY)), false);
-        return 1;
+        server.getPlayerManager().broadcast(Text.empty()
+                .append(who)
+                .append(Text.literal(" disbanded the nation ").formatted(Formatting.GRAY))
+                .append(ColorUtils.colored(name, rgb))
+                .append(Text.literal(". Its land is wilderness again.").formatted(Formatting.GRAY)), false);
     }
 
     // ---------------------------------------------------------------- banish
@@ -385,6 +431,7 @@ public final class NationCommands {
         ServerPlayerEntity online = ctx.getSource().getServer().getPlayerManager().getPlayer(target.get().getId());
         if (online != null && grant) {
             online.sendMessage(NationTeams.chatPrefix(nation)
+                    .copy()
                     .append(Text.literal("You now have " + permission.get().displayName()
                             + " access in this land.").formatted(Formatting.GRAY)), false);
         }
@@ -457,6 +504,127 @@ public final class NationCommands {
         return 1;
     }
 
+    // ----------------------------------------------------------------- homes
+
+    private static Nation.Home currentHome(ServerPlayerEntity player) {
+        return new Nation.Home(player.getWorld().getRegistryKey().getValue().toString(),
+                player.getX(), player.getY(), player.getZ(), player.getYaw(), player.getPitch());
+    }
+
+    private static int setHome(CommandContext<ServerCommandSource> ctx, int slot) throws CommandSyntaxException {
+        ServerPlayerEntity player = ctx.getSource().getPlayerOrThrow();
+        NationManager manager = NationManager.get();
+        Nation nation = manager.nationOf(player.getUuid());
+        if (nation == null || !nation.isOwner(player.getUuid())) {
+            ctx.getSource().sendError(Text.literal("Only the nation leader can set nation homes."));
+            return 0;
+        }
+        List<Nation.Home> homes = nation.getHomes();
+        if (slot >= 0) {
+            // Explicit slot: replace (or append when it's the next free slot).
+            if (slot < homes.size()) {
+                homes.set(slot, currentHome(player));
+            } else if (slot == homes.size() && homes.size() < Nation.MAX_HOMES) {
+                homes.add(currentHome(player));
+            } else {
+                ctx.getSource().sendError(Text.literal("Slot " + (slot + 1) + " is not available. "
+                        + "Delete one with /nation delhome first."));
+                return 0;
+            }
+            manager.save();
+            player.sendMessage(Text.literal("Nation home " + (slot + 1) + " set here.").formatted(Formatting.GREEN), false);
+            return 1;
+        }
+        if (homes.size() >= Nation.MAX_HOMES) {
+            ctx.getSource().sendError(Text.literal("All 3 nation homes are set. /nation delhome <1-3> to free one."));
+            return 0;
+        }
+        homes.add(currentHome(player));
+        manager.save();
+        player.sendMessage(Text.literal("Nation home " + homes.size() + " set here. Teleport with /nation home "
+                + homes.size() + ".").formatted(Formatting.GREEN), false);
+        return 1;
+    }
+
+    private static int home(CommandContext<ServerCommandSource> ctx, int slot) throws CommandSyntaxException {
+        ServerPlayerEntity player = ctx.getSource().getPlayerOrThrow();
+        Nation nation = NationManager.get().nationOf(player.getUuid());
+        if (nation == null) {
+            ctx.getSource().sendError(Text.literal("You are not in a nation."));
+            return 0;
+        }
+        if (CombatManager.denyIfTagged(player, "teleport home")) {
+            return 0;
+        }
+        List<Nation.Home> homes = nation.getHomes();
+        if (homes.isEmpty()) {
+            ctx.getSource().sendError(Text.literal("Your nation has no home yet. A leader can set one with /nation sethome."));
+            return 0;
+        }
+        if (slot >= homes.size()) {
+            ctx.getSource().sendError(Text.literal("Home " + (slot + 1) + " isn't set. Your nation has "
+                    + homes.size() + " home(s) (/nation homes)."));
+            return 0;
+        }
+        Nation.Home target = homes.get(slot);
+        Identifier id = Identifier.tryParse(target.getWorld());
+        ServerWorld world = id == null ? null
+                : ctx.getSource().getServer().getWorld(RegistryKey.of(RegistryKeys.WORLD, id));
+        if (world == null) {
+            ctx.getSource().sendError(Text.literal("The home's world no longer exists."));
+            return 0;
+        }
+        player.teleport(world, target.getX(), target.getY(), target.getZ(), Set.of(),
+                target.getYaw(), target.getPitch(), false);
+        player.sendMessage(Text.literal("Welcome home ").formatted(Formatting.GREEN)
+                .append(ColorUtils.colored(nation.getName(), nation.getRgb()))
+                .append(Text.literal(" member! (home " + (slot + 1) + ")").formatted(Formatting.GRAY)), false);
+        player.playSound(SoundEvents.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
+        return 1;
+    }
+
+    private static int delHome(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
+        ServerPlayerEntity player = ctx.getSource().getPlayerOrThrow();
+        int slot = IntegerArgumentType.getInteger(ctx, "slot") - 1;
+        NationManager manager = NationManager.get();
+        Nation nation = manager.nationOf(player.getUuid());
+        if (nation == null || !nation.isOwner(player.getUuid())) {
+            ctx.getSource().sendError(Text.literal("Only the nation leader can delete nation homes."));
+            return 0;
+        }
+        if (slot < 0 || slot >= nation.getHomes().size()) {
+            ctx.getSource().sendError(Text.literal("There is no home in slot " + (slot + 1) + "."));
+            return 0;
+        }
+        nation.getHomes().remove(slot);
+        manager.save();
+        player.sendMessage(Text.literal("Deleted nation home " + (slot + 1) + ".").formatted(Formatting.YELLOW), false);
+        return 1;
+    }
+
+    private static int homes(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
+        ServerPlayerEntity player = ctx.getSource().getPlayerOrThrow();
+        Nation nation = NationManager.get().nationOf(player.getUuid());
+        if (nation == null) {
+            ctx.getSource().sendError(Text.literal("You are not in a nation."));
+            return 0;
+        }
+        player.sendMessage(Text.literal("—— " + nation.getName() + " homes (" + nation.getHomes().size() + "/"
+                + Nation.MAX_HOMES + ") ——").formatted(Formatting.GOLD), false);
+        int i = 1;
+        for (Nation.Home home : nation.getHomes()) {
+            int index = i++;
+            player.sendMessage(Text.literal(" #" + index + " ").formatted(Formatting.DARK_GRAY)
+                    .append(Text.literal(home.getWorld()).formatted(Formatting.AQUA))
+                    .append(Text.literal("  " + (int) home.getX() + ", " + (int) home.getY() + ", " + (int) home.getZ())
+                            .formatted(Formatting.GRAY)), false);
+        }
+        if (nation.getHomes().isEmpty()) {
+            player.sendMessage(Text.literal("None set. Leader: /nation sethome").formatted(Formatting.DARK_GRAY), false);
+        }
+        return 1;
+    }
+
     // ------------------------------------------------------------------ info
 
     private static int infoSelf(CommandContext<ServerCommandSource> ctx) throws CommandSyntaxException {
@@ -490,8 +658,14 @@ public final class NationCommands {
         source.sendFeedback(() -> Text.literal(" Members: " + nation.getMembers().size()).formatted(Formatting.GRAY)
                 .append(Text.literal("    Land: " + nation.claimedBlocks() + " / " + nation.maxBlocks()
                         + " blocks (" + nation.getClaims().size() + " claims)").formatted(Formatting.GRAY))
-                .append(Text.literal("    Color: ").formatted(Formatting.GRAY))
-                .append(ColorUtils.colored(String.format("#%06X", nation.getRgb()), nation.getRgb())), false);
+                .append(Text.literal("    Homes: " + nation.getHomes().size() + "/" + Nation.MAX_HOMES)
+                        .formatted(Formatting.GRAY)), false);
+        source.sendFeedback(() -> Text.literal(" Color: ").formatted(Formatting.GRAY)
+                .append(ColorUtils.colored(String.format("#%06X", nation.getRgb()), nation.getRgb()))
+                .append(Text.literal("    Core: ").formatted(Formatting.GRAY))
+                .append(Text.literal(nation.hasCore()
+                        ? nation.getCoreHits() + "/" + Nation.MAX_CORE_HITS + " hits left"
+                        : "no core").formatted(nation.hasCore() ? Formatting.YELLOW : Formatting.DARK_GRAY)), false);
         if (!nation.getClaims().isEmpty()) {
             source.sendFeedback(() -> Text.literal(" Claims:").formatted(Formatting.DARK_GRAY), false);
             for (Claim claim : nation.getClaims()) {

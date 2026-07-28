@@ -21,15 +21,24 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * The main shop menu ({@code /shop}).
  *
  * <p>The window is a 9x4 chest GUI: slots 0-29 are the category slots that
- * server owners can freely assign with {@code /shopadmin category create},
- * the remaining 6 slots are utility buttons.
+ * server owners can freely assign ({@code /shopadmin} GUI or
+ * {@code /economycategory create}), the remaining 6 slots are utility
+ * buttons.
+ *
+ * <p>Security: every click is cancelled — nothing can be dragged out,
+ * shift-clicked, dropped (Q), number-key-swapped or pick-blocked.
+ * Prices come from {@link ShopManager} at click time, never from the item
+ * stacks in the menu, so a tampered/ghost client display can never affect
+ * the server-side trade.
  */
 public class ShopMainMenu extends GenericContainerScreenHandler {
 
@@ -41,6 +50,16 @@ public class ShopMainMenu extends GenericContainerScreenHandler {
     private static final int SLOT_CLOSE = 35;
 
     private static final Text TITLE = ColorUtils.legacy("&6&l✦ Shop ✦");
+
+    /** Currently open menus — refreshed when the shop data changes. */
+    private static final Set<ShopMainMenu> OPEN_MENUS = new LinkedHashSet<>();
+
+    /** Re-renders every open main menu (used by /sreload and the admin GUI). */
+    public static void refreshOpenMenus() {
+        for (ShopMainMenu menu : OPEN_MENUS) {
+            menu.refresh();
+        }
+    }
 
     private final SimpleInventory inventory;
     private final PlayerInventory playerInventory;
@@ -57,7 +76,14 @@ public class ShopMainMenu extends GenericContainerScreenHandler {
         super(ScreenHandlerType.GENERIC_9X4, syncId, playerInventory, inventory, ROWS);
         this.inventory = inventory;
         this.playerInventory = playerInventory;
+        OPEN_MENUS.add(this);
         refresh();
+    }
+
+    @Override
+    public void onClosed(PlayerEntity player) {
+        OPEN_MENUS.remove(this);
+        super.onClosed(player);
     }
 
     private ServerPlayerEntity viewer() {
@@ -113,8 +139,8 @@ public class ShopMainMenu extends GenericContainerScreenHandler {
 
     @Override
     public void onSlotClick(int slotIndex, int button, SlotActionType actionType, PlayerEntity player) {
-        // Everything is cancelled on purpose: nothing here may be taken out
-        // or moved around, clicks only trigger actions.
+        // Everything is cancelled on purpose: nothing here may be taken out,
+        // moved around, dropped or cloned — clicks only trigger actions.
         if (!(player instanceof ServerPlayerEntity serverPlayer) || slotIndex < 0 || slotIndex >= SIZE) {
             return;
         }

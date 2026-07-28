@@ -10,7 +10,7 @@ import java.util.UUID;
 
 /**
  * A nation: name, color, owner/members, trusted outsiders with granted
- * permissions, claims and the claim-block allowance.
+ * permissions, claims, nation homes and the physical nation core.
  */
 public class Nation {
 
@@ -18,6 +18,10 @@ public class Nation {
     public static final long BASE_CLAIM_BLOCKS = 1_000_000L;
     /** Extra allowance granted per netherite ingot spent on /nation upgrade. */
     public static final long BLOCKS_PER_NETHERITE = 100L;
+    /** Nation home slots each nation gets. */
+    public static final int MAX_HOMES = 3;
+    /** Hits the nation core survives before the nation falls. */
+    public static final int MAX_CORE_HITS = 10_000;
 
     private String name = "Nation";
     /** Lowercase key used for lookups. */
@@ -36,6 +40,22 @@ public class Nation {
     /** Extra claim blocks bought with netherite. */
     private long bonusBlocks = 0;
     private List<Claim> claims = new ArrayList<>();
+    /** Nation homes (max {@link #MAX_HOMES}). */
+    private List<Home> homes = new ArrayList<>();
+
+    // ------------------------------------------------------------ core data
+
+    /** World the core lives in ("" when the nation has no core yet). */
+    private String coreWorld = "";
+    private double coreX;
+    private double coreY;
+    private double coreZ;
+    /** UUID of the armor stand entity visualising the core. */
+    private UUID coreEntityUuid;
+    /** Remaining hits before the core (and the nation) is destroyed. */
+    private int coreHits = MAX_CORE_HITS;
+    /** Damage tracker: attacker uuid -> hits dealt to the core. */
+    private Map<UUID, Integer> coreDamage = new LinkedHashMap<>();
 
     public Nation() {
     }
@@ -177,5 +197,141 @@ public class Nation {
             }
         }
         return null;
+    }
+
+    // ---------------------------------------------------------------- homes
+
+    public List<Home> getHomes() {
+        return homes;
+    }
+
+    public boolean addHome(Home home) {
+        if (homes.size() >= MAX_HOMES) {
+            return false;
+        }
+        homes.add(home);
+        return true;
+    }
+
+    /** A nation home teleport target. */
+    public static class Home {
+        private String world = "minecraft:overworld";
+        private double x;
+        private double y;
+        private double z;
+        private float yaw;
+        private float pitch;
+
+        public Home() {
+        }
+
+        public Home(String world, double x, double y, double z, float yaw, float pitch) {
+            this.world = world;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.yaw = yaw;
+            this.pitch = pitch;
+        }
+
+        public String getWorld() {
+            return world;
+        }
+
+        public double getX() {
+            return x;
+        }
+
+        public double getY() {
+            return y;
+        }
+
+        public double getZ() {
+            return z;
+        }
+
+        public float getYaw() {
+            return yaw;
+        }
+
+        public float getPitch() {
+            return pitch;
+        }
+    }
+
+    // ---------------------------------------------------------------- core
+
+    public boolean hasCore() {
+        return coreWorld != null && !coreWorld.isEmpty();
+    }
+
+    public String getCoreWorld() {
+        return coreWorld;
+    }
+
+    public void placeCore(String world, double x, double y, double z) {
+        this.coreWorld = world;
+        this.coreX = x;
+        this.coreY = y;
+        this.coreZ = z;
+        this.coreHits = MAX_CORE_HITS;
+    }
+
+    public double getCoreX() {
+        return coreX;
+    }
+
+    public double getCoreY() {
+        return coreY;
+    }
+
+    public double getCoreZ() {
+        return coreZ;
+    }
+
+    public UUID getCoreEntityUuid() {
+        return coreEntityUuid;
+    }
+
+    public void setCoreEntityUuid(UUID coreEntityUuid) {
+        this.coreEntityUuid = coreEntityUuid;
+    }
+
+    public void clearCore() {
+        this.coreWorld = "";
+        this.coreEntityUuid = null;
+        this.coreDamage.clear();
+    }
+
+    public int getCoreHits() {
+        return coreHits;
+    }
+
+    public void setCoreHits(int coreHits) {
+        this.coreHits = coreHits;
+    }
+
+    public void damageCore(UUID attacker) {
+        coreHits = Math.max(0, coreHits - 1);
+        if (attacker != null) {
+            coreDamage.merge(attacker, 1, Integer::sum);
+        }
+    }
+
+    public void healCore(int amount) {
+        coreHits = Math.min(MAX_CORE_HITS, coreHits + amount);
+    }
+
+    /** The player who dealt the most damage to the core, or {@code null}. */
+    public UUID topCoreAttacker() {
+        UUID best = null;
+        int bestHits = 0;
+        for (Map.Entry<UUID, Integer> entry : coreDamage.entrySet()) {
+            if (entry.getValue() > bestHits) {
+                bestHits = entry.getValue();
+                best = entry.getKey();
+            }
+        }
+        return best;
     }
 }

@@ -97,6 +97,22 @@ public final class ShopManager {
         return null;
     }
 
+    /** The first unused category slot (0-29), or {@code -1} when all are taken. */
+    public int firstFreeSlot() {
+        boolean[] used = new boolean[CATEGORY_SLOTS];
+        for (ShopCategory category : categories.values()) {
+            if (category.getSlot() >= 0 && category.getSlot() < CATEGORY_SLOTS) {
+                used[category.getSlot()] = true;
+            }
+        }
+        for (int slot = 0; slot < CATEGORY_SLOTS; slot++) {
+            if (!used[slot]) {
+                return slot;
+            }
+        }
+        return -1;
+    }
+
     /**
      * Creates a new category. The id is derived from the display name
      * (formatting codes stripped), made unique if needed.

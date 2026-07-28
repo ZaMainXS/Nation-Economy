@@ -1,5 +1,6 @@
 package com.nationeconomy.shop.gui;
 
+import com.nationeconomy.combat.CombatManager;
 import com.nationeconomy.economy.EconomyManager;
 import com.nationeconomy.shop.SellLogic;
 import com.nationeconomy.shop.ShopCategory;
@@ -23,7 +24,9 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Paginated view of a single shop category.
@@ -36,6 +39,12 @@ import java.util.List;
  *     <li>Right-click: sell 1 (from your inventory)</li>
  *     <li>Shift + right-click: sell all of that item</li>
  * </ul>
+ *
+ * <p>Anti-dupe measures: all clicks are cancelled (no item can leave or
+ * enter the menu), prices/balances are always read from the live
+ * {@link ShopManager}/{@link EconomyManager} state at click time, and
+ * purchases are atomic (balance check + withdraw, then item creation from
+ * scratch — never cloned from the menu display).
  */
 public class ShopCategoryMenu extends GenericContainerScreenHandler {
 
@@ -47,6 +56,16 @@ public class ShopCategoryMenu extends GenericContainerScreenHandler {
     private static final int SLOT_PREVIOUS = 48;
     private static final int SLOT_NEXT = 50;
     private static final int SLOT_CLOSE = 53;
+
+    /** Currently open category menus. */
+    private static final Set<ShopCategoryMenu> OPEN_MENUS = new LinkedHashSet<>();
+
+    /** Re-renders every open category menu. */
+    public static void refreshOpenMenus() {
+        for (ShopCategoryMenu menu : OPEN_MENUS) {
+            menu.refresh();
+        }
+    }
 
     private final SimpleInventory inventory;
     private final String categoryId;
@@ -73,7 +92,14 @@ public class ShopCategoryMenu extends GenericContainerScreenHandler {
         this.inventory = inventory;
         this.categoryId = categoryId;
         this.page = Math.max(0, page);
+        OPEN_MENUS.add(this);
         refresh();
+    }
+
+    @Override
+    public void onClosed(PlayerEntity player) {
+        OPEN_MENUS.remove(this);
+        super.onClosed(player);
     }
 
     private int pageCount() {
@@ -207,7 +233,8 @@ public class ShopCategoryMenu extends GenericContainerScreenHandler {
         boolean rightClick = button == 1;
 
         if (!rightClick) {
-            // Buy
+            // Buy — a fresh ShopItem is resolved from the live manager data,
+            // and combat-tagged players cannot buy.
             int amount = shift ? Math.max(1, new ItemStack(ShopManager.itemOf(shopItem.getItem())).getMaxCount()) : 1;
             buy(serverPlayer, shopItem, amount);
         } else {
@@ -224,6 +251,9 @@ public class ShopCategoryMenu extends GenericContainerScreenHandler {
 
     private void buy(ServerPlayerEntity player, ShopItem shopItem, int amount) {
         Item item = ShopManager.itemOf(shopItem.getItem());
+        if (CombatManager.denyIfTagged(player, "buy from the shop")) {
+            return;
+        }
         if (!shopItem.isBuyable()) {
             error(player, "This item cannot be bought.");
             return;
@@ -237,6 +267,7 @@ public class ShopCategoryMenu extends GenericContainerScreenHandler {
         }
         economy.withdraw(player.getUuid(), cost);
 
+        // Items are created from scratch — never taken from the menu display.
         int remaining = amount;
         while (remaining > 0) {
             int stackSize = Math.min(remaining, new ItemStack(item).getMaxCount());
