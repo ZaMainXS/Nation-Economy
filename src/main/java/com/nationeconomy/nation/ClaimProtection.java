@@ -188,7 +188,13 @@ public final class ClaimProtection {
 
         // Containers (chests, barrels, furnaces, hoppers, ...) need CHEST.
         boolean container = blockEntity instanceof Container;
-        if (container && !player.isShiftKeyDown()) {
+        if (container) {
+            // Only an actual sneak-placement (placeable in hand) bypasses the
+            // "open" behaviour — sneak-clicking with an empty hand still opens
+            // the container in vanilla, and would otherwise slip through here.
+            if (player.isShiftKeyDown() && held.getItem() instanceof BlockItem) {
+                return NationPermission.PLACE;
+            }
             return NationPermission.CHEST;
         }
         // Placing a block against an existing block (also while sneaking past a usable block).
