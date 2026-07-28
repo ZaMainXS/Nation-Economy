@@ -80,7 +80,7 @@ public final class ShopCommands {
                     .then(CommandManager.literal("delete")
                             .then(CommandManager.argument("category", StringArgumentType.word())
                                     .suggests(ShopCommands::suggestCategories)
-                                    .executes(ShopCommands::categoryDelete)))));
+                                    .executes(ShopCommands::categoryDelete)));
         }
 
         // /economyhanditem add <buy> <sell> [category]
@@ -94,7 +94,7 @@ public final class ShopCommands {
                                             .then(CommandManager.argument("category", StringArgumentType.word())
                                                     .suggests(ShopCommands::suggestCategories)
                                                     .executes(ctx -> handItemAdd(ctx,
-                                                            StringArgumentType.getString(ctx, "category"))))))))));
+                                                            StringArgumentType.getString(ctx, "category")))))))));
         }
 
         // /sreload [confirm]
