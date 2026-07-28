@@ -11,7 +11,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.level.ServerLevel;
@@ -61,8 +60,8 @@ public final class CoreManager {
         stand.setSilent(true);
         stand.setNoGravity(true);
         stand.setSmall(true);
-        stand.setHideBasePlate(true);
-        stand.setGlowing(true);
+        stand.setNoBasePlate(true);
+        stand.setGlowingTag(true);
         stand.setItemSlot(EquipmentSlot.HEAD, CoreItems.coreOrb());
         updateName(stand, nation);
         stand.setCustomNameVisible(true);
@@ -155,7 +154,7 @@ public final class CoreManager {
         if (nation == null) {
             return false;
         }
-        MinecraftServer server = attacker.server;
+        MinecraftServer server = attacker.getServer();
 
         if (nation.isMember(attacker.getUUID())) {
             attacker.sendSystemMessage(Component.literal("This is your nation's core (" + nation.getCoreHits() + "/"
@@ -264,7 +263,7 @@ public final class CoreManager {
         coreEntity.discard();
         nation.clearCore();
         manager.disband(nation);
-        NationTeams.removePlayerTeam(server, nation);
+        NationTeams.removeTeam(server, nation);
         for (UUID member : nation.getMembers()) {
             ServerPlayer online = server.getPlayerList().getPlayer(member);
             if (online != null) {

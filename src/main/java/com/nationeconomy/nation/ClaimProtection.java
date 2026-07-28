@@ -1,6 +1,7 @@
 package com.nationeconomy.nation;
 
 import com.nationeconomy.util.ColorUtils;
+import net.minecraft.commands.Commands;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
@@ -125,7 +126,7 @@ public final class ClaimProtection {
     private static InteractionResult raidHit(ServerPlayer player, Level world, BlockPos pos, Nation nation) {
         String worldId = world.dimension().location().toString();
 
-        if (world.getBlockState(pos).getHardness(world, pos) < 0) {
+        if (world.getBlockState(pos).getDestroySpeed(world, pos) < 0) {
             player.sendSystemMessage(Component.literal("This block cannot be raided.").withStyle(ChatFormatting.RED), true);
             return InteractionResult.FAIL;
         }
@@ -133,7 +134,7 @@ public final class ClaimProtection {
         int hits = RaidManager.get().hit(worldId, pos);
         if (hits >= RaidManager.RAID_HITS) {
             RaidManager.get().clear(worldId, pos);
-            world.breakBlock(pos, true, player);
+            world.destroyBlock(pos, true);
             player.sendSystemMessage(Component.literal("You broke through " + nation.getName() + "'s defenses!")
                     .withStyle(ChatFormatting.GOLD), false);
             return InteractionResult.FAIL;
@@ -187,7 +188,7 @@ public final class ClaimProtection {
 
         // Containers (chests, barrels, furnaces, hoppers, ...) need CHEST.
         boolean container = blockEntity instanceof Container;
-        if (container && !player.isSneaking()) {
+        if (container && !player.isShiftKeyDown()) {
             return NationPermission.CHEST;
         }
         // Placing a block against an existing block (also while sneaking past a usable block).
@@ -202,16 +203,16 @@ public final class ClaimProtection {
 
     /** Blocks that "do something" on right click without being a container. */
     private static boolean isInteractive(Block block) {
-        return block instanceof DoorBlock || block instanceof FenceGateBlock || block instanceof TrapdoorBlock
-                || block instanceof AbstractButtonBlock || block instanceof LeverBlock
-                || block instanceof AbstractSignBlock || block instanceof BedBlock
+        return block instanceof DoorBlock || block instanceof FenceGateBlock || block instanceof TrapDoorBlock
+                || block instanceof ButtonBlock || block instanceof LeverBlock
+                || block instanceof SignBlock || block instanceof BedBlock
                 || block instanceof CraftingTableBlock || block instanceof AnvilBlock
                 || block instanceof StonecutterBlock || block instanceof GrindstoneBlock
                 || block instanceof CartographyTableBlock || block instanceof LoomBlock
-                || block instanceof EnchantingTableBlock || block instanceof BellBlock
+                || block instanceof EnchantmentTableBlock || block instanceof BellBlock
                 || block instanceof NoteBlock || block instanceof JukeboxBlock
                 || block instanceof BeaconBlock || block instanceof DaylightDetectorBlock
-                || block instanceof AbstractRedstoneGateBlock || block instanceof CakeBlock
+                || block instanceof DiodeBlock || block instanceof CakeBlock
                 || block instanceof DragonEggBlock || block instanceof FlowerPotBlock
                 || block instanceof LecternBlock || block instanceof RespawnAnchorBlock
                 || block instanceof SmithingTableBlock || block instanceof CampfireBlock;
@@ -288,7 +289,7 @@ public final class ClaimProtection {
     }
 
     private static boolean isOperatorBypass(ServerPlayer player) {
-        return player.server.getProfilePermissions(player.getGameProfile()) >= 3;
+        return Commands.LEVEL_ADMINS.check(player.permissions());
     }
 
     /** Sends a rate-limited "this land is protected" message. */

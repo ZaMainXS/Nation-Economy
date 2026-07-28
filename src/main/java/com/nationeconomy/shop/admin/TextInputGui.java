@@ -6,7 +6,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.inventory.AnvilMenu;
-import net.minecraft.world.inventory.ContainerAccess;
+import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.server.level.ServerPlayer;
@@ -31,12 +31,13 @@ public class TextInputGui extends AnvilMenu {
 
     public static void open(ServerPlayer player, Component title, String initialValue, Consumer<String> onSubmit) {
         player.openMenu(new SimpleMenuProvider(
-                (syncId, playerInventory, p) -> new TextInputGui(syncId, playerInventory, initialValue, onSubmit),
+                (syncId, playerInventory, p) -> new TextInputGui(syncId, playerInventory,
+                        ContainerLevelAccess.create(player.level(), player.blockPosition()), initialValue, onSubmit),
                 title));
     }
 
-    private TextInputGui(int syncId, Inventory playerInventory, String initialValue, Consumer<String> onSubmit) {
-        super(syncId, playerInventory, ContainerAccess.EMPTY);
+    private TextInputGui(int syncId, Inventory playerInventory, ContainerLevelAccess access, String initialValue, Consumer<String> onSubmit) {
+        super(syncId, playerInventory, access);
         this.onSubmit = onSubmit;
         ItemStack placeholder = new ItemStack(Items.PAPER);
         placeholder.set(DataComponents.CUSTOM_NAME, Component.literal(initialValue == null ? "" : initialValue));

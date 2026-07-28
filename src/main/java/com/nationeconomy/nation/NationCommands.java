@@ -16,7 +16,7 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerPlayer;
@@ -328,7 +328,7 @@ public final class NationCommands {
         CoreManager.removeCore(server, nation);
         nation.clearCore();
         manager.disband(nation);
-        NationTeams.removePlayerTeam(server, nation);
+        NationTeams.removeTeam(server, nation);
         for (UUID member : nation.getMembers()) {
             ServerPlayer online = server.getPlayerList().getPlayer(member);
             if (online != null) {

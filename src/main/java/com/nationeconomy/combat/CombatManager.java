@@ -83,7 +83,7 @@ public final class CombatManager {
             world.getServer().getPlayerList().broadcastSystemMessage(Component.empty()
                     .append(Component.literal(player.getName().getString()).withStyle(ChatFormatting.RED))
                     .append(Component.literal(" logged out during combat and died!").withStyle(ChatFormatting.GRAY)), false);
-            living.hurt(world, living.damageSources().generic(), Float.MAX_VALUE);
+            living.hurt(living.damageSources().generic(), Float.MAX_VALUE);
         });
 
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> serverStopping = true);

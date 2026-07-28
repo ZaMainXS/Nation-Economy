@@ -88,7 +88,7 @@ public class ShopAdminMainGui extends ChestMenu {
         GuiElements.lore(create, List.of(
                 Component.literal("Type the name in the anvil,").withStyle(ChatFormatting.GRAY),
                 Component.literal("it gets the first free slot.").withStyle(ChatFormatting.GRAY),
-                Component.literal("ChatFormatting codes like &a&l and &#FF8800 work.").withStyle(ChatFormatting.DARK_GRAY)));
+                Component.literal("Color codes like &a&l and &#FF8800 work.").withStyle(ChatFormatting.DARK_GRAY)));
         inventory.setItem(SLOT_CREATE, create);
 
         ItemStack push = new ItemStack(Items.SUNFLOWER);

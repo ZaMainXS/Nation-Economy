@@ -72,7 +72,7 @@ public final class ShopCommands {
         // (registered lowercase and Capitalized — command names are case sensitive)
         for (String alias : new String[]{"economycategory", "Economycategory"}) {
             dispatcher.register(Commands.literal(alias)
-                    .requires(source -> source.hasPermission(2))
+                    .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .then(Commands.literal("create")
                             .then(Commands.argument("slot", IntegerArgumentType.integer(0, ShopManager.CATEGORY_SLOTS - 1))
                                     .then(Commands.argument("name", StringArgumentType.greedyString())
@@ -86,7 +86,7 @@ public final class ShopCommands {
         // /economyhanditem add <buy> <sell> [category]
         for (String alias : new String[]{"economyhanditem", "Economyhanditem"}) {
             dispatcher.register(Commands.literal(alias)
-                    .requires(source -> source.hasPermission(2))
+                    .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                     .then(Commands.literal("add")
                             .then(Commands.argument("buyPrice", DoubleArgumentType.doubleArg(0, 1000000000))
                                     .then(Commands.argument("sellPrice", DoubleArgumentType.doubleArg(-1, 1000000000))
@@ -99,7 +99,7 @@ public final class ShopCommands {
 
         // /sreload [confirm]
         dispatcher.register(Commands.literal("sreload")
-                .requires(source -> source.hasPermission(2))
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .executes(ctx -> {
                     ctx.getSource().sendSuccess(() ->
                             Component.literal("Are you sure? Run /sreload confirm to reload the shop data.")
@@ -136,9 +136,9 @@ public final class ShopCommands {
         if (sold == 0) {
             ShopItem shopItem = ShopManager.get().findSellable(id);
             if (shopItem == null || !shopItem.isSellable()) {
-                ctx.getSource().sendFailure(Component.literal(item.getName().getString() + " cannot be sold to the shop."));
+                ctx.getSource().sendFailure(Component.literal(item.getDescription().getString() + " cannot be sold to the shop."));
             } else {
-                ctx.getSource().sendFailure(Component.literal("You don't have any " + item.getName().getString() + " to sell."));
+                ctx.getSource().sendFailure(Component.literal("You don't have any " + item.getDescription().getString() + " to sell."));
             }
         }
         return sold > 0 ? 1 : 0;
@@ -235,7 +235,7 @@ public final class ShopCommands {
 
     private static LiteralArgumentBuilder<CommandSourceStack> shopAdmin(CommandBuildContext registryAccess) {
         return Commands.literal("shopadmin")
-                .requires(source -> source.hasPermission(2))
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .executes(ShopCommands::openAdminGui)
                 .then(Commands.literal("category")
                         .then(Commands.literal("create")

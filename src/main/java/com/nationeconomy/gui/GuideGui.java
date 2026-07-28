@@ -147,13 +147,13 @@ public class GuideGui extends ChestMenu {
 
     // -------------------------------------------------------------- content
 
-    private record Entry(net.minecraft.item.Item icon, String name, String[] lore) {
+    private record Entry(net.minecraft.world.item.Item icon, String name, String[] lore) {
     }
 
-    private record Page(net.minecraft.item.Item icon, String title, List<Entry> entries) {
+    private record Page(net.minecraft.world.item.Item icon, String title, List<Entry> entries) {
     }
 
-    private static Entry e(net.minecraft.item.Item icon, String name, String... lore) {
+    private static Entry e(net.minecraft.world.item.Item icon, String name, String... lore) {
         return new Entry(icon, name, lore);
     }
 

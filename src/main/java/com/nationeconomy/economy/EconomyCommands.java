@@ -51,7 +51,7 @@ public final class EconomyCommands {
 
         // /eco <give|take|set> <player> <amount>  (ops only)
         dispatcher.register(Commands.literal("eco")
-                .requires(source -> source.hasPermission(2))
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.literal("give")
                         .then(playerArg()
                                 .then(amountArg()
@@ -170,7 +170,7 @@ public final class EconomyCommands {
             case SET -> "Set the balance of ";
         };
         source.sendSuccess(() -> Component.literal(verb)
-                        .append(ColorUtils.withStyle(target.get().name(), ChatFormatting.AQUA))
+                        .append(ColorUtils.formatted(target.get().name(), ChatFormatting.AQUA))
                         .append(Component.literal(". New balance: " + MoneyUtil.format(newBalance))),
                 true);
         ServerPlayer onlineTarget = source.getServer().getPlayerList().getPlayer(target.get().id());

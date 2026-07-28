@@ -155,7 +155,7 @@ public final class ColorUtils {
                     } else if (fmt == ChatFormatting.ITALIC) {
                         style = style.withItalic(true);
                     } else if (fmt == ChatFormatting.UNDERLINE) {
-                        style = style.withUnderline(true);
+                        style = style.withUnderlined(true);
                     } else if (fmt == ChatFormatting.STRIKETHROUGH) {
                         style = style.withStrikethrough(true);
                     } else if (fmt == ChatFormatting.OBFUSCATED) {

@@ -94,7 +94,7 @@ public final class SellLogic {
                 .append(Component.translatable(ShopManager.itemOf(id).getDescriptionId()).withStyle(ChatFormatting.AQUA)), false));
         player.sendSystemMessage(Component.literal("Total: ").withStyle(ChatFormatting.GRAY)
                 .append(Component.literal(MoneyUtil.format(total)).withStyle(ChatFormatting.GOLD))
-                .append(Component.literal("   ").append(ColorUtils.withStyle("(balance: " + MoneyUtil.format(
+                .append(Component.literal("   ").append(ColorUtils.formatted("(balance: " + MoneyUtil.format(
                         EconomyManager.get().balance(player.getUUID())) + ")", ChatFormatting.DARK_GRAY))), false);
         player.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 0.6f, 1.2f);
     }
