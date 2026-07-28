@@ -3,21 +3,21 @@ package com.nationeconomy.gui;
 import com.mojang.brigadier.CommandDispatcher;
 import com.nationeconomy.shop.gui.GuiElements;
 import com.nationeconomy.util.ColorUtils;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.SimpleInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.screen.GenericContainerScreenHandler;
-import net.minecraft.screen.ScreenHandlerType;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
-import net.minecraft.screen.slot.SlotActionType;
-import net.minecraft.server.command.CommandManager;
-import net.minecraft.server.command.ServerCommandSource;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.commands.Commands;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 import java.util.List;
 
@@ -26,7 +26,7 @@ import java.util.List;
  * the whole mod: economy, shop, nations, claiming, homes, combat, raiding
  * and the admin tools.
  */
-public class GuideGui extends GenericContainerScreenHandler {
+public class GuideGui extends ChestMenu {
 
     public static final int ROWS = 6;
     public static final int SIZE = ROWS * 9;
@@ -36,31 +36,31 @@ public class GuideGui extends GenericContainerScreenHandler {
     private static final int SLOT_CLOSE = 53;
     private static final int[] ENTRY_SLOTS = {10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25};
 
-    private static final Text TITLE = ColorUtils.legacy("&6&l✦ Guide ✦");
+    private static final Component TITLE = ColorUtils.legacy("&6&l✦ Guide ✦");
 
-    private final SimpleInventory inventory;
+    private final SimpleContainer inventory;
     private int page;
 
     // -------------------------------------------------------------- command
 
-    public static void register(CommandDispatcher<ServerCommandSource> dispatcher) {
-        dispatcher.register(CommandManager.literal("nationalexplain")
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        dispatcher.register(Commands.literal("nationalexplain")
                 .executes(ctx -> {
-                    open(ctx.getSource().getPlayerOrThrow(), 0);
+                    open(ctx.getSource().getPlayerOrException(), 0);
                     return 1;
                 }));
     }
 
-    public static void open(ServerPlayerEntity player, int page) {
-        SimpleInventory inventory = new SimpleInventory(SIZE);
+    public static void open(ServerPlayer player, int page) {
+        SimpleContainer inventory = new SimpleContainer(SIZE);
         int targetPage = page;
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
+        player.openMenu(new SimpleMenuProvider(
                 (syncId, playerInventory, p) -> new GuideGui(syncId, playerInventory, inventory, targetPage),
                 TITLE));
     }
 
-    private GuideGui(int syncId, PlayerInventory playerInventory, SimpleInventory inventory, int page) {
-        super(ScreenHandlerType.GENERIC_9X6, syncId, playerInventory, inventory, ROWS);
+    private GuideGui(int syncId, Inventory playerInventory, SimpleContainer inventory, int page) {
+        super(MenuType.GENERIC_9x6, syncId, playerInventory, inventory, ROWS);
         this.inventory = inventory;
         this.page = Math.max(0, Math.min(page, PAGES.size() - 1));
         refresh();
@@ -68,7 +68,7 @@ public class GuideGui extends GenericContainerScreenHandler {
 
     private void refresh() {
         for (int slot = 0; slot < SIZE; slot++) {
-            inventory.setStack(slot, GuiElements.filler());
+            inventory.setItem(slot, GuiElements.filler());
         }
 
         Page content = PAGES.get(page);
@@ -78,40 +78,40 @@ public class GuideGui extends GenericContainerScreenHandler {
                 break;
             }
             ItemStack stack = new ItemStack(entry.icon);
-            GuiElements.name(stack, Text.literal(entry.name).formatted(Formatting.GOLD));
+            GuiElements.name(stack, Component.literal(entry.name).withStyle(ChatFormatting.GOLD));
             GuiElements.lore(stack, java.util.Arrays.stream(entry.lore)
-                    .map(line -> Text.literal(line).formatted(Formatting.GRAY))
-                    .map(text -> (Text) text)
+                    .map(line -> Component.literal(line).withStyle(ChatFormatting.GRAY))
+                    .map(text -> (Component) text)
                     .toList());
-            inventory.setStack(ENTRY_SLOTS[index++], stack);
+            inventory.setItem(ENTRY_SLOTS[index++], stack);
         }
 
         ItemStack header = new ItemStack(content.icon);
-        GuiElements.name(header, Text.literal(content.title).formatted(Formatting.GOLD));
-        GuiElements.lore(header, List.of(Text.literal("Page " + (page + 1) + " / " + PAGES.size())
-                .formatted(Formatting.DARK_GRAY)));
-        inventory.setStack(4, header);
+        GuiElements.name(header, Component.literal(content.title).withStyle(ChatFormatting.GOLD));
+        GuiElements.lore(header, List.of(Component.literal("Page " + (page + 1) + " / " + PAGES.size())
+                .withStyle(ChatFormatting.DARK_GRAY)));
+        inventory.setItem(4, header);
 
         ItemStack previous = new ItemStack(Items.SPECTRAL_ARROW);
-        GuiElements.name(previous, Text.literal("« Previous Page").formatted(Formatting.AQUA));
-        inventory.setStack(SLOT_PREVIOUS, previous);
+        GuiElements.name(previous, Component.literal("« Previous Page").withStyle(ChatFormatting.AQUA));
+        inventory.setItem(SLOT_PREVIOUS, previous);
 
         ItemStack indicator = new ItemStack(Items.BOOK);
-        GuiElements.name(indicator, Text.literal("Page " + (page + 1) + " / " + PAGES.size()).formatted(Formatting.GRAY));
-        inventory.setStack(49, indicator);
+        GuiElements.name(indicator, Component.literal("Page " + (page + 1) + " / " + PAGES.size()).withStyle(ChatFormatting.GRAY));
+        inventory.setItem(49, indicator);
 
         ItemStack next = new ItemStack(Items.SPECTRAL_ARROW);
-        GuiElements.name(next, Text.literal("Next Page »").formatted(Formatting.AQUA));
-        inventory.setStack(SLOT_NEXT, next);
+        GuiElements.name(next, Component.literal("Next Page »").withStyle(ChatFormatting.AQUA));
+        inventory.setItem(SLOT_NEXT, next);
 
         ItemStack close = new ItemStack(Items.BARRIER);
-        GuiElements.name(close, Text.literal("Close").formatted(Formatting.RED));
-        inventory.setStack(SLOT_CLOSE, close);
+        GuiElements.name(close, Component.literal("Close").withStyle(ChatFormatting.RED));
+        inventory.setItem(SLOT_CLOSE, close);
     }
 
     @Override
-    public void onSlotClick(int slotIndex, int button, SlotActionType actionType, PlayerEntity player) {
-        if (!(player instanceof ServerPlayerEntity serverPlayer) || slotIndex < 0 || slotIndex >= SIZE) {
+    public void clicked(int slotIndex, int button, ClickType actionType, Player player) {
+        if (!(player instanceof ServerPlayer serverPlayer) || slotIndex < 0 || slotIndex >= SIZE) {
             return;
         }
         switch (slotIndex) {
@@ -129,19 +129,19 @@ public class GuideGui extends GenericContainerScreenHandler {
                     serverPlayer.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.5f, 1.0f);
                 }
             }
-            case SLOT_CLOSE -> serverPlayer.closeScreenHandler();
+            case SLOT_CLOSE -> serverPlayer.closeContainer();
             default -> {
             }
         }
     }
 
     @Override
-    public ItemStack quickMove(PlayerEntity player, int slot) {
+    public ItemStack quickMoveStack(Player player, int slot) {
         return ItemStack.EMPTY;
     }
 
     @Override
-    public boolean canUse(PlayerEntity player) {
+    public boolean stillValid(Player player) {
         return true;
     }
 

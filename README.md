@@ -131,7 +131,7 @@ Ops (permission level 3+) bypass land protection.
 
 ## Installation
 
-1. Run a **Fabric server for Minecraft 1.21.11** (Loader ≥ 0.18.0).
+1. Run a **Fabric server for Minecraft 1.21.11** (Loader ≥ 0.19.3 recommended).
 2. Put **Fabric API ≥ 0.141.x** in `mods/`.
 3. Build this mod (below) and drop `nation-economy-1.0.0.jar` into `mods/`.
 4. Start the server. Data lives per world in `<world>/nationeconomy/*.json`
@@ -151,19 +151,25 @@ gradle wrapper            # if you have a local Gradle install
 ./gradlew build           # output: build/libs/nation-economy-1.0.0.jar
 ```
 
-Pinned versions (see `gradle.properties`): Minecraft `1.21.11`, Yarn `1.21.11+build.6`,
-Loader `0.18.4`, Fabric API `0.141.6+1.21.11`, Loom `1.13.20`, Gradle `8.14.3`.
+Pinned versions (see `gradle.properties`): Minecraft `1.21.11`, Loader `0.19.3`,
+Fabric API `0.141.6+1.21.11`, Loom `1.17`, Gradle `8.14.3`.
+
+The mod is written against **Mojang's official mappings** (`loom.officialMojangMappings()`)
+— the standard mapping set for 1.21.11 modding, used by the fabric-example-mod template and
+Fabric API itself for this version. (Older chat logs may mention Yarn — that was swapped out:
+Yarn's 1.21.11 mappings have large gaps such as unmapped registry constants, while official
+mappings are complete.)
 
 ## How it works (for developers)
 
 * **Server-side only** (`DedicatedServerModInitializer`) — no mixins, no client classes.
-* GUIs are vanilla screen handlers (`GenericContainerScreenHandler` 9x3/9x4/9x6 chest GUIs and an
-  `AnvilScreenHandler` text prompt). `onSlotClick` is overridden everywhere so clicks are cancel-only
-  and drive the logic — this is also the anti-dupe backbone.
+* GUIs are vanilla screen handlers (`ChestMenu` 9x3/9x4/9x6 chest GUIs and an
+  `AnvilMenu` text prompt). `AbstractContainerMenu#clicked` is overridden everywhere so clicks
+  are cancel-only and drive the logic — this is also the anti-dupe backbone.
 * Nation identity uses scoreboard teams (tab/nametag prefix) + `ServerMessageEvents.ALLOW_CHAT_MESSAGE`
   for chat; territory titles use the title packets on a 4-tick movement check.
 * The core is an invisible, invulnerable, small armor stand holding a nether star on its head
-  (only stable, public entity APIs are used so it compiles against yarn 1.21.11).
+  (only stable, public entity APIs are used).
 * Combat tags use `ServerLivingEntityEvents.ALLOW_DAMAGE` (covers melee *and* projectiles); the
   logout-kill happens in `ServerPlayConnectionEvents.DISCONNECT` via the damage system so items and
   the death message behave exactly like a normal death.

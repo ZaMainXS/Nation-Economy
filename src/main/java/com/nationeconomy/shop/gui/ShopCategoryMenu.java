@@ -8,20 +8,20 @@ import com.nationeconomy.shop.ShopItem;
 import com.nationeconomy.shop.ShopManager;
 import com.nationeconomy.util.ColorUtils;
 import com.nationeconomy.util.MoneyUtil;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.SimpleInventory;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.screen.GenericContainerScreenHandler;
-import net.minecraft.screen.ScreenHandlerType;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
-import net.minecraft.screen.slot.SlotActionType;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -46,7 +46,7 @@ import java.util.Set;
  * purchases are atomic (balance check + withdraw, then item creation from
  * scratch — never cloned from the menu display).
  */
-public class ShopCategoryMenu extends GenericContainerScreenHandler {
+public class ShopCategoryMenu extends ChestMenu {
 
     public static final int ROWS = 6;
     public static final int SIZE = ROWS * 9; // 54
@@ -67,28 +67,28 @@ public class ShopCategoryMenu extends GenericContainerScreenHandler {
         }
     }
 
-    private final SimpleInventory inventory;
+    private final SimpleContainer inventory;
     private final String categoryId;
     private final List<ShopItem> items = new ArrayList<>();
     private int page;
 
-    public static void open(ServerPlayerEntity player, String categoryId, int page) {
+    public static void open(ServerPlayer player, String categoryId, int page) {
         ShopCategory category = ShopManager.get().category(categoryId);
         if (category == null) {
-            player.sendMessage(Text.literal("That shop category no longer exists.").formatted(Formatting.RED), false);
+            player.sendSystemMessage(Component.literal("That shop category no longer exists.").withStyle(ChatFormatting.RED), false);
             ShopMainMenu.open(player);
             return;
         }
-        Text title = ColorUtils.legacy(category.getName());
-        SimpleInventory inventory = new SimpleInventory(SIZE);
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
+        Component title = ColorUtils.legacy(category.getName());
+        SimpleContainer inventory = new SimpleContainer(SIZE);
+        player.openMenu(new SimpleMenuProvider(
                 (syncId, playerInventory, p) -> new ShopCategoryMenu(syncId, playerInventory, inventory, categoryId, page),
                 title));
     }
 
-    private ShopCategoryMenu(int syncId, PlayerInventory playerInventory, SimpleInventory inventory,
+    private ShopCategoryMenu(int syncId, Inventory playerInventory, SimpleContainer inventory,
                              String categoryId, int page) {
-        super(ScreenHandlerType.GENERIC_9X6, syncId, playerInventory, inventory, ROWS);
+        super(MenuType.GENERIC_9x6, syncId, playerInventory, inventory, ROWS);
         this.inventory = inventory;
         this.categoryId = categoryId;
         this.page = Math.max(0, page);
@@ -97,9 +97,9 @@ public class ShopCategoryMenu extends GenericContainerScreenHandler {
     }
 
     @Override
-    public void onClosed(PlayerEntity player) {
+    public void removed(Player player) {
         OPEN_MENUS.remove(this);
-        super.onClosed(player);
+        super.removed(player);
     }
 
     private int pageCount() {
@@ -118,37 +118,37 @@ public class ShopCategoryMenu extends GenericContainerScreenHandler {
         }
 
         for (int slot = 0; slot < SIZE; slot++) {
-            inventory.setStack(slot, ItemStack.EMPTY);
+            inventory.setItem(slot, ItemStack.EMPTY);
         }
 
         // Content
         int start = page * CONTENT_SLOTS;
         for (int slot = 0; slot < CONTENT_SLOTS && start + slot < items.size(); slot++) {
-            inventory.setStack(slot, displayStack(items.get(start + slot)));
+            inventory.setItem(slot, displayStack(items.get(start + slot)));
         }
 
         // Bottom navigation row
         for (int slot = CONTENT_SLOTS; slot < SIZE; slot++) {
-            inventory.setStack(slot, GuiElements.filler());
+            inventory.setItem(slot, GuiElements.filler());
         }
 
         ItemStack back = new ItemStack(Items.ARROW);
-        GuiElements.name(back, Text.literal("« Back to the Shop").formatted(Formatting.YELLOW));
-        inventory.setStack(SLOT_BACK, back);
+        GuiElements.name(back, Component.literal("« Back to the Shop").withStyle(ChatFormatting.YELLOW));
+        inventory.setItem(SLOT_BACK, back);
 
         ItemStack previous = new ItemStack(Items.SPECTRAL_ARROW);
-        GuiElements.name(previous, Text.literal("« Previous Page").formatted(Formatting.AQUA));
-        GuiElements.lore(previous, List.of(Text.literal("Page " + (page + 1) + " / " + pageCount()).formatted(Formatting.GRAY)));
-        inventory.setStack(SLOT_PREVIOUS, previous);
+        GuiElements.name(previous, Component.literal("« Previous Page").withStyle(ChatFormatting.AQUA));
+        GuiElements.lore(previous, List.of(Component.literal("Page " + (page + 1) + " / " + pageCount()).withStyle(ChatFormatting.GRAY)));
+        inventory.setItem(SLOT_PREVIOUS, previous);
 
         ItemStack next = new ItemStack(Items.SPECTRAL_ARROW);
-        GuiElements.name(next, Text.literal("Next Page »").formatted(Formatting.AQUA));
-        GuiElements.lore(next, List.of(Text.literal("Page " + (page + 1) + " / " + pageCount()).formatted(Formatting.GRAY)));
-        inventory.setStack(SLOT_NEXT, next);
+        GuiElements.name(next, Component.literal("Next Page »").withStyle(ChatFormatting.AQUA));
+        GuiElements.lore(next, List.of(Component.literal("Page " + (page + 1) + " / " + pageCount()).withStyle(ChatFormatting.GRAY)));
+        inventory.setItem(SLOT_NEXT, next);
 
         ItemStack close = new ItemStack(Items.BARRIER);
-        GuiElements.name(close, Text.literal("Close").formatted(Formatting.RED));
-        inventory.setStack(SLOT_CLOSE, close);
+        GuiElements.name(close, Component.literal("Close").withStyle(ChatFormatting.RED));
+        inventory.setItem(SLOT_CLOSE, close);
     }
 
     /** The item display with buy/sell prices in the hover tooltip. */
@@ -156,39 +156,39 @@ public class ShopCategoryMenu extends GenericContainerScreenHandler {
         Item item = ShopManager.itemOf(shopItem.getItem());
         ItemStack stack = new ItemStack(item);
 
-        List<Text> lore = new ArrayList<>();
-        lore.add(Text.literal(" "));
+        List<Component> lore = new ArrayList<>();
+        lore.add(Component.literal(" "));
         if (shopItem.isBuyable()) {
-            lore.add(Text.literal("Buy: ").formatted(Formatting.GRAY)
-                    .append(Text.literal(MoneyUtil.format(shopItem.getBuy())).formatted(Formatting.GREEN))
-                    .append(Text.literal(" each").formatted(Formatting.DARK_GRAY)));
+            lore.add(Component.literal("Buy: ").withStyle(ChatFormatting.GRAY)
+                    .append(Component.literal(MoneyUtil.format(shopItem.getBuy())).withStyle(ChatFormatting.GREEN))
+                    .append(Component.literal(" each").withStyle(ChatFormatting.DARK_GRAY)));
         } else {
-            lore.add(Text.literal("Buy: —").formatted(Formatting.DARK_GRAY));
+            lore.add(Component.literal("Buy: —").withStyle(ChatFormatting.DARK_GRAY));
         }
         if (shopItem.isSellable()) {
-            lore.add(Text.literal("Sell: ").formatted(Formatting.GRAY)
-                    .append(Text.literal(MoneyUtil.format(shopItem.getSell())).formatted(Formatting.GOLD))
-                    .append(Text.literal(" each").formatted(Formatting.DARK_GRAY)));
+            lore.add(Component.literal("Sell: ").withStyle(ChatFormatting.GRAY)
+                    .append(Component.literal(MoneyUtil.format(shopItem.getSell())).withStyle(ChatFormatting.GOLD))
+                    .append(Component.literal(" each").withStyle(ChatFormatting.DARK_GRAY)));
         } else {
-            lore.add(Text.literal("Sell: —").formatted(Formatting.DARK_GRAY));
+            lore.add(Component.literal("Sell: —").withStyle(ChatFormatting.DARK_GRAY));
         }
-        lore.add(Text.literal(" "));
+        lore.add(Component.literal(" "));
         if (shopItem.isBuyable()) {
-            lore.add(Text.literal("◂ Left-click: buy 1").formatted(Formatting.GRAY));
-            lore.add(Text.literal("◂ Shift-left-click: buy a stack").formatted(Formatting.GRAY));
+            lore.add(Component.literal("◂ Left-click: buy 1").withStyle(ChatFormatting.GRAY));
+            lore.add(Component.literal("◂ Shift-left-click: buy a stack").withStyle(ChatFormatting.GRAY));
         }
         if (shopItem.isSellable()) {
-            lore.add(Text.literal("▸ Right-click: sell 1").formatted(Formatting.GRAY));
-            lore.add(Text.literal("▸ Shift-right-click: sell all").formatted(Formatting.GRAY));
+            lore.add(Component.literal("▸ Right-click: sell 1").withStyle(ChatFormatting.GRAY));
+            lore.add(Component.literal("▸ Shift-right-click: sell all").withStyle(ChatFormatting.GRAY));
         }
         GuiElements.lore(stack, lore);
         return stack;
     }
 
     @Override
-    public void onSlotClick(int slotIndex, int button, SlotActionType actionType, PlayerEntity player) {
+    public void clicked(int slotIndex, int button, ClickType actionType, Player player) {
         // All clicks are cancelled; they only trigger buy/sell/navigation.
-        if (!(player instanceof ServerPlayerEntity serverPlayer) || slotIndex < 0 || slotIndex >= SIZE) {
+        if (!(player instanceof ServerPlayer serverPlayer) || slotIndex < 0 || slotIndex >= SIZE) {
             return;
         }
 
@@ -214,7 +214,7 @@ public class ShopCategoryMenu extends GenericContainerScreenHandler {
                 return;
             }
             case SLOT_CLOSE -> {
-                serverPlayer.closeScreenHandler();
+                serverPlayer.closeContainer();
                 return;
             }
             default -> {
@@ -229,13 +229,13 @@ public class ShopCategoryMenu extends GenericContainerScreenHandler {
             return;
         }
         ShopItem shopItem = items.get(index);
-        boolean shift = actionType == SlotActionType.QUICK_MOVE;
+        boolean shift = actionType == ClickType.QUICK_MOVE;
         boolean rightClick = button == 1;
 
         if (!rightClick) {
             // Buy — a fresh ShopItem is resolved from the live manager data,
             // and combat-tagged players cannot buy.
-            int amount = shift ? Math.max(1, new ItemStack(ShopManager.itemOf(shopItem.getItem())).getMaxCount()) : 1;
+            int amount = shift ? Math.max(1, new ItemStack(ShopManager.itemOf(shopItem.getItem())).getMaxStackSize()) : 1;
             buy(serverPlayer, shopItem, amount);
         } else {
             // Sell
@@ -243,13 +243,13 @@ public class ShopCategoryMenu extends GenericContainerScreenHandler {
             int sold = SellLogic.sell(serverPlayer, shopItem.getItem(), amount);
             if (sold == 0) {
                 error(serverPlayer, shopItem.isSellable()
-                        ? "You don't have any " + ShopManager.itemOf(shopItem.getItem()).getName().getString() + " to sell."
+                        ? "You don't have any " + ShopManager.itemOf(shopItem.getItem()).getDescription().getString() + " to sell."
                         : "This item cannot be sold.");
             }
         }
     }
 
-    private void buy(ServerPlayerEntity player, ShopItem shopItem, int amount) {
+    private void buy(ServerPlayer player, ShopItem shopItem, int amount) {
         Item item = ShopManager.itemOf(shopItem.getItem());
         if (CombatManager.denyIfTagged(player, "buy from the shop")) {
             return;
@@ -260,44 +260,44 @@ public class ShopCategoryMenu extends GenericContainerScreenHandler {
         }
         double cost = shopItem.getBuy() * amount;
         EconomyManager economy = EconomyManager.get();
-        if (!economy.has(player.getUuid(), cost)) {
+        if (!economy.has(player.getUUID(), cost)) {
             error(player, "You need " + MoneyUtil.format(cost) + " but only have "
-                    + MoneyUtil.format(economy.balance(player.getUuid())) + ".");
+                    + MoneyUtil.format(economy.balance(player.getUUID())) + ".");
             return;
         }
-        economy.withdraw(player.getUuid(), cost);
+        economy.withdraw(player.getUUID(), cost);
 
         // Items are created from scratch — never taken from the menu display.
         int remaining = amount;
         while (remaining > 0) {
-            int stackSize = Math.min(remaining, new ItemStack(item).getMaxCount());
-            player.getInventory().offerOrDrop(new ItemStack(item, stackSize));
+            int stackSize = Math.min(remaining, new ItemStack(item).getMaxStackSize());
+            player.getInventory().placeItemBackInInventory(new ItemStack(item, stackSize));
             remaining -= stackSize;
         }
-        player.sendMessage(Text.literal("Bought ").formatted(Formatting.GRAY)
-                .append(Text.literal(amount + "x ").formatted(Formatting.AQUA))
-                .append(item.getName().copy().formatted(Formatting.AQUA))
-                .append(Text.literal(" for ").formatted(Formatting.GRAY))
-                .append(Text.literal(MoneyUtil.format(cost)).formatted(Formatting.GOLD)), false);
+        player.sendSystemMessage(Component.literal("Bought ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(amount + "x ").withStyle(ChatFormatting.AQUA))
+                .append(item.getDescription().copy().withStyle(ChatFormatting.AQUA))
+                .append(Component.literal(" for ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(MoneyUtil.format(cost)).withStyle(ChatFormatting.GOLD)), false);
         player.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 0.6f, 1.2f);
     }
 
-    private static void clickSound(ServerPlayerEntity player) {
+    private static void clickSound(ServerPlayer player) {
         player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.5f, 1.0f);
     }
 
-    private static void error(ServerPlayerEntity player, String message) {
-        player.sendMessage(Text.literal(message).formatted(Formatting.RED), false);
+    private static void error(ServerPlayer player, String message) {
+        player.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.RED), false);
         player.playSound(SoundEvents.ENTITY_VILLAGER_NO, 0.7f, 1.0f);
     }
 
     @Override
-    public ItemStack quickMove(PlayerEntity player, int slot) {
+    public ItemStack quickMoveStack(Player player, int slot) {
         return ItemStack.EMPTY;
     }
 
     @Override
-    public boolean canUse(PlayerEntity player) {
+    public boolean stillValid(Player player) {
         return true;
     }
 }

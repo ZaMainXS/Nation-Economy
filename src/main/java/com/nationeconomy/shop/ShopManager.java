@@ -3,10 +3,10 @@ package com.nationeconomy.shop;
 import com.nationeconomy.NationEconomyMod;
 import com.nationeconomy.util.ColorUtils;
 import com.nationeconomy.util.JsonFiles;
-import net.minecraft.item.Item;
-import net.minecraft.item.Items;
-import net.minecraft.registry.Registries;
-import net.minecraft.util.Identifier;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
@@ -160,23 +160,23 @@ public final class ShopManager {
     public static Item itemOf(String itemId) {
         String id = itemId.contains(":") ? itemId : "minecraft:" + itemId;
         Identifier identifier = Identifier.tryParse(id);
-        if (identifier == null || !Registries.ITEM.containsId(identifier)) {
+        if (identifier == null || !BuiltInRegistries.ITEM.containsKey(identifier)) {
             NationEconomyMod.LOGGER.warn("Unknown shop item '{}', using stone instead.", itemId);
             return Items.STONE;
         }
-        return Registries.ITEM.get(identifier);
+        return BuiltInRegistries.ITEM.getValue(identifier);
     }
 
     /** Checks whether an item id points at a real item. */
     public static boolean isValidItem(String itemId) {
         String id = itemId.contains(":") ? itemId : "minecraft:" + itemId;
         Identifier identifier = Identifier.tryParse(id);
-        return identifier != null && Registries.ITEM.containsId(identifier);
+        return identifier != null && BuiltInRegistries.ITEM.containsKey(identifier);
     }
 
     /** Canonical id of an item ("minecraft:stone"). */
     public static String idOf(Item item) {
-        return Registries.ITEM.getId(item).toString();
+        return BuiltInRegistries.ITEM.getKey(item).toString();
     }
 
     // ------------------------------------------------------------- defaults

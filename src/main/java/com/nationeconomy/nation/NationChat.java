@@ -1,9 +1,9 @@
 package com.nationeconomy.nation;
 
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 /**
  * Replaces vanilla chat formatting with
@@ -19,16 +19,16 @@ public final class NationChat {
     public static void register() {
         // Cancel vanilla chat and re-broadcast our own format.
         ServerMessageEvents.ALLOW_CHAT_MESSAGE.register((message, sender, params) -> {
-            Nation nation = NationManager.get().nationOf(sender.getUuid());
+            Nation nation = NationManager.get().nationOf(sender.getUUID());
 
-            MutableText line = Text.empty();
+            MutableComponent line = Component.empty();
             if (nation != null) {
                 line.append(NationTeams.chatPrefix(nation));
             }
-            line.append(Text.literal("<" + sender.getName().getString() + "> ").formatted(Formatting.WHITE));
-            line.append(Text.literal(message.getContent().getString()).formatted(Formatting.WHITE));
+            line.append(Component.literal("<" + sender.getName().getString() + "> ").withStyle(ChatFormatting.WHITE));
+            line.append(Component.literal(message.decoratedContent().getString()).withStyle(ChatFormatting.WHITE));
 
-            sender.getServer().getPlayerManager().broadcast(line, false);
+            sender.getServer().getPlayerList().broadcastSystemMessage(line, false);
             return false;
         });
     }

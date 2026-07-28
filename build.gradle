@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.13.20'
+    id 'fabric-loom' version '1.17'
     id 'java'
 }
 
@@ -21,8 +21,9 @@ repositories {
 dependencies {
     // Minecraft itself
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    // Yarn mappings (still officially supported for 1.21.11)
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    // Mojang official mappings — the standard mapping set for 1.21.11 modding
+    // (what Fabric's example mod and Fabric API itself use for this version)
+    mappings loom.officialMojangMappings()
     // Fabric Loader
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     // Fabric API

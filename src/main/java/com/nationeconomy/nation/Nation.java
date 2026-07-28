@@ -45,7 +45,7 @@ public class Nation {
 
     // ------------------------------------------------------------ core data
 
-    /** World the core lives in ("" when the nation has no core yet). */
+    /** Level the core lives in ("" when the nation has no core yet). */
     private String coreWorld = "";
     private double coreX;
     private double coreY;

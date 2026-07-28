@@ -1,12 +1,12 @@
 package com.nationeconomy.nation;
 
 import com.nationeconomy.util.ColorUtils;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.HoverEvent;
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.math.ChunkPos;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.HoverEvent;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
+import net.minecraft.world.level.ChunkPos;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -29,68 +29,68 @@ public final class NationMapRenderer {
     private NationMapRenderer() {
     }
 
-    public static void render(ServerPlayerEntity player, int radius) {
+    public static void render(ServerPlayer player, int radius) {
         radius = Math.max(1, Math.min(MAX_RADIUS, radius));
-        String worldId = player.getWorld().getRegistryKey().getValue().toString();
-        ChunkPos center = player.getChunkPos();
+        String worldId = player.level().dimension().location().toString();
+        ChunkPos center = player.chunkPosition();
         NationManager manager = NationManager.get();
 
-        player.sendMessage(Text.literal("——— Nations Map ").formatted(Formatting.GOLD)
-                .append(Text.literal("(1 square = 1 chunk)").formatted(Formatting.DARK_GRAY))
-                .append(Text.literal(" ———").formatted(Formatting.GOLD)), false);
+        player.sendSystemMessage(Component.literal("——— Nations Map ").withStyle(ChatFormatting.GOLD)
+                .append(Component.literal("(1 square = 1 chunk)").withStyle(ChatFormatting.DARK_GRAY))
+                .append(Component.literal(" ———").withStyle(ChatFormatting.GOLD)), false);
 
         Set<Nation> visible = new LinkedHashSet<>();
         for (int dz = -radius; dz <= radius; dz++) {
-            MutableText line = Text.empty();
+            MutableComponent line = Component.empty();
             for (int dx = -radius; dx <= radius; dx++) {
                 int chunkX = center.x + dx;
                 int chunkZ = center.z + dz;
                 Nation nation = manager.claimAt(worldId, chunkX * 16 + 8, chunkZ * 16 + 8);
 
                 if (dx == 0 && dz == 0) {
-                    line.append(Text.literal("+").formatted(Formatting.GOLD, Formatting.BOLD)
-                            .styled(style -> style.withHoverEvent(
-                                    new HoverEvent.ShowText(Text.literal("You are here")
-                                            .formatted(Formatting.GOLD)))));
+                    line.append(Component.literal("+").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
+                            .withStyle(style -> style.withHoverEvent(
+                                    new HoverEvent.ShowText(Component.literal("You are here")
+                                            .withStyle(ChatFormatting.GOLD)))));
                 } else if (nation != null) {
                     visible.add(nation);
                     line.append(cell(nation, chunkX, chunkZ));
                 } else {
-                    line.append(Text.literal("·").formatted(Formatting.DARK_GRAY)
-                            .styled(style -> style.withHoverEvent(new HoverEvent.ShowText(
-                                    Text.literal("Wilderness — unclaimed")
-                                            .formatted(Formatting.GRAY)))));
+                    line.append(Component.literal("·").withStyle(ChatFormatting.DARK_GRAY)
+                            .withStyle(style -> style.withHoverEvent(new HoverEvent.ShowText(
+                                    Component.literal("Wilderness — unclaimed")
+                                            .withStyle(ChatFormatting.GRAY)))));
                 }
             }
-            player.sendMessage(line, false);
+            player.sendSystemMessage(line, false);
         }
 
         // Legend with the amounts of claimed land.
         if (visible.isEmpty()) {
-            player.sendMessage(Text.literal("No nation has claimed land in this area.")
-                    .formatted(Formatting.DARK_GRAY), false);
+            player.sendSystemMessage(Component.literal("No nation has claimed land in this area.")
+                    .withStyle(ChatFormatting.DARK_GRAY), false);
         } else {
-            player.sendMessage(Text.literal("—— Nations ——").formatted(Formatting.GOLD), false);
+            player.sendSystemMessage(Component.literal("—— Nations ——").withStyle(ChatFormatting.GOLD), false);
             for (Nation nation : visible) {
-                player.sendMessage(Text.empty()
+                player.sendSystemMessage(Component.empty()
                         .append(ColorUtils.colored("■ ", nation.getRgb()))
                         .append(ColorUtils.colored(nation.getName(), nation.getRgb()))
-                        .append(Text.literal(" — " + nation.claimedBlocks() + " blocks claimed ("
+                        .append(Component.literal(" — " + nation.claimedBlocks() + " blocks claimed ("
                                 + nation.getClaims().size() + " claims)")
-                                .formatted(Formatting.GRAY)), false);
+                                .withStyle(ChatFormatting.GRAY)), false);
             }
         }
-        player.sendMessage(Text.literal("Tip: hover the squares for details, /nation info <name> for more.")
-                .formatted(Formatting.DARK_GRAY), false);
+        player.sendSystemMessage(Component.literal("Tip: hover the squares for details, /nation info <name> for more.")
+                .withStyle(ChatFormatting.DARK_GRAY), false);
     }
 
-    private static Text cell(Nation nation, int chunkX, int chunkZ) {
-        MutableText hover = Text.empty()
+    private static Component cell(Nation nation, int chunkX, int chunkZ) {
+        MutableComponent hover = Component.empty()
                 .append(ColorUtils.colored(nation.getName(), nation.getRgb()))
-                .append(Text.literal("\n" + nation.claimedBlocks() + " blocks claimed")
-                        .formatted(Formatting.GRAY))
-                .append(Text.literal("\nChunk " + chunkX + ", " + chunkZ).formatted(Formatting.DARK_GRAY));
+                .append(Component.literal("\n" + nation.claimedBlocks() + " blocks claimed")
+                        .withStyle(ChatFormatting.GRAY))
+                .append(Component.literal("\nChunk " + chunkX + ", " + chunkZ).withStyle(ChatFormatting.DARK_GRAY));
         return ColorUtils.colored("■", nation.getRgb())
-                .styled(style -> style.withHoverEvent(new HoverEvent.ShowText(hover)));
+                .withStyle(style -> style.withHoverEvent(new HoverEvent.ShowText(hover)));
     }
 }

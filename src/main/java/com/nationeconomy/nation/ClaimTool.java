@@ -1,16 +1,19 @@
 package com.nationeconomy.nation;
 
 import com.nationeconomy.util.ColorUtils;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.UnbreakableComponent;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.core.component.DataComponents;
+
+import net.minecraft.network.chat.Style;
+import net.minecraft.util.Unit;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 import java.util.List;
+import net.minecraft.world.item.component.ItemLore;
 
 /**
  * The golden shovel used to select land ({@code /claimland}).
@@ -27,38 +30,38 @@ public final class ClaimTool {
     /** Creates a fresh claim shovel. */
     public static ItemStack create() {
         ItemStack stack = new ItemStack(Items.GOLDEN_SHOVEL);
-        stack.set(DataComponentTypes.CUSTOM_NAME, ColorUtils.legacy("&6&l" + TOOL_NAME));
-        stack.set(DataComponentTypes.LORE, new net.minecraft.component.type.LoreComponent(List.of(
+        stack.set(DataComponents.CUSTOM_NAME, ColorUtils.legacy("&6&l" + TOOL_NAME));
+        stack.set(DataComponents.LORE, new ItemLore(List.of(
                 line("Left-click a block: corner 1"),
                 line("Right-click a block: corner 2"),
                 line("Then run /claimland confirm"))));
-        stack.set(DataComponentTypes.UNBREAKABLE, new UnbreakableComponent(false));
+        stack.set(DataComponents.UNBREAKABLE, Unit.INSTANCE);
         return stack;
     }
 
-    private static Text line(String text) {
-        return Text.empty().setStyle(net.minecraft.text.Style.EMPTY.withItalic(false))
-                .append(Text.literal(text).formatted(Formatting.GRAY));
+    private static Component line(String text) {
+        return Component.empty().setStyle(Style.EMPTY.withItalic(false))
+                .append(Component.literal(text).withStyle(ChatFormatting.GRAY));
     }
 
     /** Checks whether a stack is the claim shovel. */
     public static boolean isClaimTool(ItemStack stack) {
-        if (stack.isEmpty() || !stack.isOf(Items.GOLDEN_SHOVEL)) {
+        if (stack.isEmpty() || !stack.is(Items.GOLDEN_SHOVEL)) {
             return false;
         }
-        Text name = stack.get(DataComponentTypes.CUSTOM_NAME);
+        Component name = stack.get(DataComponents.CUSTOM_NAME);
         return name != null && name.getString().equals(TOOL_NAME);
     }
 
     /** Gives the player the shovel when they don't already have one. */
-    public static boolean giveIfMissing(ServerPlayerEntity player) {
-        PlayerInventory inventory = player.getInventory();
-        for (int slot = 0; slot < inventory.size(); slot++) {
-            if (isClaimTool(inventory.getStack(slot))) {
+    public static boolean giveIfMissing(ServerPlayer player) {
+        Inventory inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            if (isClaimTool(inventory.getItem(slot))) {
                 return false;
             }
         }
-        inventory.offerOrDrop(create());
+        inventory.placeItemBackInInventory(create());
         return true;
     }
 }

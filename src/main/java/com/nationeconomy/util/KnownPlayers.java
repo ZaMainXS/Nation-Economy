@@ -2,7 +2,7 @@ package com.nationeconomy.util;
 
 import com.mojang.authlib.GameProfile;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.file.Path;
@@ -60,8 +60,8 @@ public final class KnownPlayers {
     // -------------------------------------------------------------- lookup
 
     /** Remembers a player (called on join). */
-    public static void track(ServerPlayerEntity player) {
-        index(player.getUuid(), player.getName().getString());
+    public static void track(ServerPlayer player) {
+        index(player.getUUID(), player.getName().getString());
         dirty = true;
     }
 
@@ -86,7 +86,7 @@ public final class KnownPlayers {
      * the known-player cache. Works for offline players that joined before.
      */
     public static Optional<GameProfile> resolve(MinecraftServer server, String name) {
-        ServerPlayerEntity online = server.getPlayerManager().getPlayer(name);
+        ServerPlayer online = server.getPlayerList().getPlayerByName(name);
         if (online != null) {
             return Optional.of(online.getGameProfile());
         }

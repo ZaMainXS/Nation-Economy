@@ -1,13 +1,13 @@
 package com.nationeconomy.nation;
 
 import com.nationeconomy.util.ColorUtils;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.LoreComponent;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 import java.util.List;
 
@@ -22,33 +22,33 @@ public final class CoreItems {
     /** The orb item displayed on the core. */
     public static ItemStack coreOrb() {
         ItemStack stack = new ItemStack(Items.NETHER_STAR);
-        stack.set(DataComponentTypes.CUSTOM_NAME, ColorUtils.legacy("&b&lNation Core"));
+        stack.set(DataComponents.CUSTOM_NAME, ColorUtils.legacy("&b&lNation Core"));
         return stack;
     }
 
     /** The craftable core healer (recipe in the mod's datapack). */
     public static ItemStack coreHealer() {
         ItemStack stack = new ItemStack(Items.NETHER_STAR);
-        stack.set(DataComponentTypes.CUSTOM_NAME,
-                Text.empty().setStyle(Style.EMPTY.withItalic(false))
-                        .append(Text.literal(HEALER_NAME).formatted(Formatting.GOLD, Formatting.BOLD)));
-        stack.set(DataComponentTypes.LORE, new LoreComponent(List.of(
+        stack.set(DataComponents.CUSTOM_NAME,
+                Component.empty().setStyle(Style.EMPTY.withItalic(false))
+                        .append(Component.literal(HEALER_NAME).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)));
+        stack.set(DataComponents.LORE, new ItemLore(List.of(
                 line("Right-click your nation's core"),
                 line("to restore 500 core hits."))));
         return stack;
     }
 
-    private static Text line(String text) {
-        return Text.empty().setStyle(Style.EMPTY.withItalic(false))
-                .append(Text.literal(text).formatted(Formatting.GRAY));
+    private static Component line(String text) {
+        return Component.empty().setStyle(Style.EMPTY.withItalic(false))
+                .append(Component.literal(text).withStyle(ChatFormatting.GRAY));
     }
 
     /** Checks whether a stack is a Core Healer (nether star renamed accordingly). */
     public static boolean isCoreHealer(ItemStack stack) {
-        if (stack.isEmpty() || !stack.isOf(Items.NETHER_STAR)) {
+        if (stack.isEmpty() || !stack.is(Items.NETHER_STAR)) {
             return false;
         }
-        Text name = stack.get(DataComponentTypes.CUSTOM_NAME);
+        Component name = stack.get(DataComponents.CUSTOM_NAME);
         return name != null && name.getString().equals(HEALER_NAME);
     }
 }

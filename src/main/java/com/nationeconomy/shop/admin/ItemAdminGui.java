@@ -6,19 +6,19 @@ import com.nationeconomy.shop.ShopManager;
 import com.nationeconomy.shop.gui.GuiElements;
 import com.nationeconomy.util.ColorUtils;
 import com.nationeconomy.util.MoneyUtil;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.SimpleInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.screen.GenericContainerScreenHandler;
-import net.minecraft.screen.ScreenHandlerType;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
-import net.minecraft.screen.slot.SlotActionType;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -28,7 +28,7 @@ import java.util.Map;
  * Admin editor for one shop item: exact buy/sell prices, buyable/sellable
  * toggles, position ("slot") inside the category grid, or removal.
  */
-public class ItemAdminGui extends GenericContainerScreenHandler {
+public class ItemAdminGui extends ChestMenu {
 
     public static final int ROWS = 3;
     public static final int SIZE = ROWS * 9; // 27
@@ -46,28 +46,28 @@ public class ItemAdminGui extends GenericContainerScreenHandler {
     private static final int SLOT_MOVE_DOWN = 24;
     private static final int SLOT_CLOSE = 26;
 
-    private final SimpleInventory inventory;
+    private final SimpleContainer inventory;
     private final String categoryId;
     private final String itemId;
 
-    public static void open(ServerPlayerEntity player, String categoryId, String itemId) {
+    public static void open(ServerPlayer player, String categoryId, String itemId) {
         ShopCategory category = ShopManager.get().category(categoryId);
         ShopItem shopItem = category == null ? null : category.getItems().get(itemId);
         if (shopItem == null) {
-            player.sendMessage(Text.literal("That item no longer exists.").formatted(Formatting.RED), false);
+            player.sendSystemMessage(Component.literal("That item no longer exists.").withStyle(ChatFormatting.RED), false);
             CategoryAdminGui.open(player, categoryId);
             return;
         }
-        Text title = ColorUtils.legacy("&8Edit Item");
-        SimpleInventory inventory = new SimpleInventory(SIZE);
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
+        Component title = ColorUtils.legacy("&8Edit Item");
+        SimpleContainer inventory = new SimpleContainer(SIZE);
+        player.openMenu(new SimpleMenuProvider(
                 (syncId, playerInventory, p) -> new ItemAdminGui(syncId, playerInventory, inventory, categoryId, itemId),
                 title));
     }
 
-    private ItemAdminGui(int syncId, PlayerInventory playerInventory, SimpleInventory inventory,
+    private ItemAdminGui(int syncId, Inventory playerInventory, SimpleContainer inventory,
                          String categoryId, String itemId) {
-        super(ScreenHandlerType.GENERIC_9X3, syncId, playerInventory, inventory, ROWS);
+        super(MenuType.GENERIC_9x3, syncId, playerInventory, inventory, ROWS);
         this.inventory = inventory;
         this.categoryId = categoryId;
         this.itemId = itemId;
@@ -80,7 +80,7 @@ public class ItemAdminGui extends GenericContainerScreenHandler {
         ShopItem shopItem = category == null ? null : category.getItems().get(itemId);
 
         for (int slot = 0; slot < SIZE; slot++) {
-            inventory.setStack(slot, GuiElements.filler());
+            inventory.setItem(slot, GuiElements.filler());
         }
         if (shopItem == null) {
             return;
@@ -88,102 +88,102 @@ public class ItemAdminGui extends GenericContainerScreenHandler {
         int position = new java.util.ArrayList<>(category.getItems().keySet()).indexOf(itemId);
 
         ItemStack display = new ItemStack(ShopManager.itemOf(itemId));
-        GuiElements.name(display, Text.literal(ShopManager.itemOf(itemId).getName().getString())
-                .formatted(Formatting.YELLOW));
+        GuiElements.name(display, Component.literal(ShopManager.itemOf(itemId).getDescription().getString())
+                .withStyle(ChatFormatting.YELLOW));
         GuiElements.lore(display, List.of(
-                Text.literal(itemId).formatted(Formatting.DARK_GRAY),
-                Text.literal("Position in category: " + (position + 1)).formatted(Formatting.GRAY)));
-        inventory.setStack(SLOT_DISPLAY, display);
+                Component.literal(itemId).withStyle(ChatFormatting.DARK_GRAY),
+                Component.literal("Position in category: " + (position + 1)).withStyle(ChatFormatting.GRAY)));
+        inventory.setItem(SLOT_DISPLAY, display);
 
         // Buy price controls
         ItemStack buyAdjust = new ItemStack(Items.GOLD_NUGGET);
-        GuiElements.name(buyAdjust, Text.literal("Buy: " + (shopItem.isBuyable()
-                ? MoneyUtil.format(shopItem.getBuy()) : "disabled")).formatted(Formatting.GREEN));
+        GuiElements.name(buyAdjust, Component.literal("Buy: " + (shopItem.isBuyable()
+                ? MoneyUtil.format(shopItem.getBuy()) : "disabled")).withStyle(ChatFormatting.GREEN));
         GuiElements.lore(buyAdjust, List.of(
-                Text.literal("◂ Left-click: +1   ▸ Right-click: -1").formatted(Formatting.YELLOW),
-                Text.literal("Shift: ±10").formatted(Formatting.DARK_GRAY)));
-        inventory.setStack(SLOT_BUY_ADJUST, buyAdjust);
+                Component.literal("◂ Left-click: +1   ▸ Right-click: -1").withStyle(ChatFormatting.YELLOW),
+                Component.literal("Shift: ±10").withStyle(ChatFormatting.DARK_GRAY)));
+        inventory.setItem(SLOT_BUY_ADJUST, buyAdjust);
 
         ItemStack buyExact = new ItemStack(Items.OAK_SIGN);
-        GuiElements.name(buyExact, Text.literal("Set Exact Buy Price").formatted(Formatting.GREEN));
-        GuiElements.lore(buyExact, List.of(Text.literal("Type the number in the anvil.").formatted(Formatting.GRAY)));
-        inventory.setStack(SLOT_BUY_EXACT, buyExact);
+        GuiElements.name(buyExact, Component.literal("Set Exact Buy Price").withStyle(ChatFormatting.GREEN));
+        GuiElements.lore(buyExact, List.of(Component.literal("Type the number in the anvil.").withStyle(ChatFormatting.GRAY)));
+        inventory.setItem(SLOT_BUY_EXACT, buyExact);
 
         ItemStack buyToggle = new ItemStack(shopItem.isBuyable() ? Items.LIME_DYE : Items.GRAY_DYE);
-        GuiElements.name(buyToggle, Text.literal(shopItem.isBuyable() ? "Buyable: ON" : "Buyable: OFF")
-                .formatted(shopItem.isBuyable() ? Formatting.GREEN : Formatting.GRAY));
-        GuiElements.lore(buyToggle, List.of(Text.literal("Click to toggle.").formatted(Formatting.DARK_GRAY)));
-        inventory.setStack(SLOT_BUY_TOGGLE, buyToggle);
+        GuiElements.name(buyToggle, Component.literal(shopItem.isBuyable() ? "Buyable: ON" : "Buyable: OFF")
+                .withStyle(shopItem.isBuyable() ? ChatFormatting.GREEN : ChatFormatting.GRAY));
+        GuiElements.lore(buyToggle, List.of(Component.literal("Click to toggle.").withStyle(ChatFormatting.DARK_GRAY)));
+        inventory.setItem(SLOT_BUY_TOGGLE, buyToggle);
 
         // Sell price controls
         ItemStack sellAdjust = new ItemStack(Items.IRON_NUGGET);
-        GuiElements.name(sellAdjust, Text.literal("Sell: " + (shopItem.isSellable()
-                ? MoneyUtil.format(shopItem.getSell()) : "disabled")).formatted(Formatting.GOLD));
+        GuiElements.name(sellAdjust, Component.literal("Sell: " + (shopItem.isSellable()
+                ? MoneyUtil.format(shopItem.getSell()) : "disabled")).withStyle(ChatFormatting.GOLD));
         GuiElements.lore(sellAdjust, List.of(
-                Text.literal("◂ Left-click: +1   ▸ Right-click: -1").formatted(Formatting.YELLOW),
-                Text.literal("Shift: ±10").formatted(Formatting.DARK_GRAY)));
-        inventory.setStack(SLOT_SELL_ADJUST, sellAdjust);
+                Component.literal("◂ Left-click: +1   ▸ Right-click: -1").withStyle(ChatFormatting.YELLOW),
+                Component.literal("Shift: ±10").withStyle(ChatFormatting.DARK_GRAY)));
+        inventory.setItem(SLOT_SELL_ADJUST, sellAdjust);
 
         ItemStack sellExact = new ItemStack(Items.SPRUCE_SIGN);
-        GuiElements.name(sellExact, Text.literal("Set Exact Sell Price").formatted(Formatting.GOLD));
+        GuiElements.name(sellExact, Component.literal("Set Exact Sell Price").withStyle(ChatFormatting.GOLD));
         GuiElements.lore(sellExact, List.of(
-                Text.literal("Type the number in the anvil.").formatted(Formatting.GRAY),
-                Text.literal("-1 disables selling.").formatted(Formatting.DARK_GRAY)));
-        inventory.setStack(SLOT_SELL_EXACT, sellExact);
+                Component.literal("Type the number in the anvil.").withStyle(ChatFormatting.GRAY),
+                Component.literal("-1 disables selling.").withStyle(ChatFormatting.DARK_GRAY)));
+        inventory.setItem(SLOT_SELL_EXACT, sellExact);
 
         ItemStack sellToggle = new ItemStack(shopItem.isSellable() ? Items.LIME_DYE : Items.GRAY_DYE);
-        GuiElements.name(sellToggle, Text.literal(shopItem.isSellable() ? "Sellable: ON" : "Sellable: OFF")
-                .formatted(shopItem.isSellable() ? Formatting.GREEN : Formatting.GRAY));
-        GuiElements.lore(sellToggle, List.of(Text.literal("Click to toggle.").formatted(Formatting.DARK_GRAY)));
-        inventory.setStack(SLOT_SELL_TOGGLE, sellToggle);
+        GuiElements.name(sellToggle, Component.literal(shopItem.isSellable() ? "Sellable: ON" : "Sellable: OFF")
+                .withStyle(shopItem.isSellable() ? ChatFormatting.GREEN : ChatFormatting.GRAY));
+        GuiElements.lore(sellToggle, List.of(Component.literal("Click to toggle.").withStyle(ChatFormatting.DARK_GRAY)));
+        inventory.setItem(SLOT_SELL_TOGGLE, sellToggle);
 
         // Order inside the category
         ItemStack moveUp = new ItemStack(Items.SPECTRAL_ARROW);
-        GuiElements.name(moveUp, Text.literal("▲ Move Earlier").formatted(Formatting.AQUA));
-        GuiElements.lore(moveUp, List.of(Text.literal("Moves this item one slot earlier").formatted(Formatting.GRAY),
-                Text.literal("inside the category page.").formatted(Formatting.GRAY)));
-        inventory.setStack(SLOT_MOVE_UP, moveUp);
+        GuiElements.name(moveUp, Component.literal("▲ Move Earlier").withStyle(ChatFormatting.AQUA));
+        GuiElements.lore(moveUp, List.of(Component.literal("Moves this item one slot earlier").withStyle(ChatFormatting.GRAY),
+                Component.literal("inside the category page.").withStyle(ChatFormatting.GRAY)));
+        inventory.setItem(SLOT_MOVE_UP, moveUp);
 
         ItemStack moveDown = new ItemStack(Items.SPECTRAL_ARROW);
-        GuiElements.name(moveDown, Text.literal("▼ Move Later").formatted(Formatting.AQUA));
-        GuiElements.lore(moveDown, List.of(Text.literal("Moves this item one slot later").formatted(Formatting.GRAY),
-                Text.literal("inside the category page.").formatted(Formatting.GRAY)));
-        inventory.setStack(SLOT_MOVE_DOWN, moveDown);
+        GuiElements.name(moveDown, Component.literal("▼ Move Later").withStyle(ChatFormatting.AQUA));
+        GuiElements.lore(moveDown, List.of(Component.literal("Moves this item one slot later").withStyle(ChatFormatting.GRAY),
+                Component.literal("inside the category page.").withStyle(ChatFormatting.GRAY)));
+        inventory.setItem(SLOT_MOVE_DOWN, moveDown);
 
         ItemStack remove = new ItemStack(Items.TNT);
-        GuiElements.name(remove, Text.literal("Remove Item").formatted(Formatting.RED));
-        GuiElements.lore(remove, List.of(Text.literal("Removes it from the category.").formatted(Formatting.DARK_GRAY)));
-        inventory.setStack(SLOT_REMOVE, remove);
+        GuiElements.name(remove, Component.literal("Remove Item").withStyle(ChatFormatting.RED));
+        GuiElements.lore(remove, List.of(Component.literal("Removes it from the category.").withStyle(ChatFormatting.DARK_GRAY)));
+        inventory.setItem(SLOT_REMOVE, remove);
 
         // Navigation
         ItemStack back = new ItemStack(Items.ARROW);
-        GuiElements.name(back, Text.literal("« Back to Category").formatted(Formatting.YELLOW));
-        inventory.setStack(SLOT_BACK, back);
+        GuiElements.name(back, Component.literal("« Back to Category").withStyle(ChatFormatting.YELLOW));
+        inventory.setItem(SLOT_BACK, back);
 
         ItemStack close = new ItemStack(Items.BARRIER);
-        GuiElements.name(close, Text.literal("Close").formatted(Formatting.RED));
-        inventory.setStack(SLOT_CLOSE, close);
+        GuiElements.name(close, Component.literal("Close").withStyle(ChatFormatting.RED));
+        inventory.setItem(SLOT_CLOSE, close);
     }
 
     @Override
-    public void onSlotClick(int slotIndex, int button, SlotActionType actionType, PlayerEntity player) {
-        if (!(player instanceof ServerPlayerEntity serverPlayer) || slotIndex < 0 || slotIndex >= SIZE) {
+    public void clicked(int slotIndex, int button, ClickType actionType, Player player) {
+        if (!(player instanceof ServerPlayer serverPlayer) || slotIndex < 0 || slotIndex >= SIZE) {
             return;
         }
         ShopManager manager = ShopManager.get();
         ShopCategory category = manager.category(categoryId);
         ShopItem shopItem = category == null ? null : category.getItems().get(itemId);
         if (shopItem == null) {
-            serverPlayer.closeScreenHandler();
+            serverPlayer.closeContainer();
             CategoryAdminGui.open(serverPlayer, categoryId);
             return;
         }
 
         switch (slotIndex) {
             case SLOT_BACK -> CategoryAdminGui.open(serverPlayer, categoryId);
-            case SLOT_CLOSE -> serverPlayer.closeScreenHandler();
+            case SLOT_CLOSE -> serverPlayer.closeContainer();
             case SLOT_BUY_ADJUST -> {
-                double delta = actionType == SlotActionType.QUICK_MOVE ? 10 : 1;
+                double delta = actionType == ClickType.QUICK_MOVE ? 10 : 1;
                 if (button == 1) {
                     delta = -delta;
                 }
@@ -191,7 +191,7 @@ public class ItemAdminGui extends GenericContainerScreenHandler {
                 saveAndRefresh(manager);
             }
             case SLOT_SELL_ADJUST -> {
-                double delta = actionType == SlotActionType.QUICK_MOVE ? 10 : 1;
+                double delta = actionType == ClickType.QUICK_MOVE ? 10 : 1;
                 if (button == 1) {
                     delta = -delta;
                 }
@@ -204,8 +204,8 @@ public class ItemAdminGui extends GenericContainerScreenHandler {
                         String.valueOf(shopItem.getBuy()), text -> {
                             Double value = parsePrice(text);
                             if (value == null) {
-                                serverPlayer.sendMessage(Text.literal("'" + text + "' is not a number.")
-                                        .formatted(Formatting.RED), false);
+                                serverPlayer.sendSystemMessage(Component.literal("'" + text + "' is not a number.")
+                                        .withStyle(ChatFormatting.RED), false);
                             } else {
                                 shopItem.setBuy(Math.max(0, value));
                                 manager.markDirty();
@@ -221,8 +221,8 @@ public class ItemAdminGui extends GenericContainerScreenHandler {
                         String.valueOf(shopItem.getSell()), text -> {
                             Double value = parsePrice(text);
                             if (value == null) {
-                                serverPlayer.sendMessage(Text.literal("'" + text + "' is not a number.")
-                                        .formatted(Formatting.RED), false);
+                                serverPlayer.sendSystemMessage(Component.literal("'" + text + "' is not a number.")
+                                        .withStyle(ChatFormatting.RED), false);
                             } else {
                                 shopItem.setSell(Math.max(-1, value));
                                 manager.markDirty();
@@ -247,8 +247,8 @@ public class ItemAdminGui extends GenericContainerScreenHandler {
                 manager.markDirty();
                 manager.save();
                 ShopAdminMainGui.refreshShops();
-                serverPlayer.sendMessage(Text.literal("Removed " + itemId + " from '" + categoryId + "'.")
-                        .formatted(Formatting.GREEN), false);
+                serverPlayer.sendSystemMessage(Component.literal("Removed " + itemId + " from '" + categoryId + "'.")
+                        .withStyle(ChatFormatting.GREEN), false);
                 CategoryAdminGui.open(serverPlayer, categoryId);
             }
             default -> {
@@ -290,17 +290,17 @@ public class ItemAdminGui extends GenericContainerScreenHandler {
         }
     }
 
-    private static void clickSound(ServerPlayerEntity player) {
+    private static void clickSound(ServerPlayer player) {
         player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.5f, 1.0f);
     }
 
     @Override
-    public ItemStack quickMove(PlayerEntity player, int slot) {
+    public ItemStack quickMoveStack(Player player, int slot) {
         return ItemStack.EMPTY;
     }
 
     @Override
-    public boolean canUse(PlayerEntity player) {
+    public boolean stillValid(Player player) {
         return true;
     }
 }

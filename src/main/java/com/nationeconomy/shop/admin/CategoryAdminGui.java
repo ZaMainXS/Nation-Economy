@@ -6,19 +6,19 @@ import com.nationeconomy.shop.ShopManager;
 import com.nationeconomy.shop.gui.GuiElements;
 import com.nationeconomy.util.ColorUtils;
 import com.nationeconomy.util.MoneyUtil;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.SimpleInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.screen.GenericContainerScreenHandler;
-import net.minecraft.screen.ScreenHandlerType;
-import net.minecraft.screen.SimpleNamedScreenHandlerFactory;
-import net.minecraft.screen.slot.SlotActionType;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.SimpleContainer;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.inventory.ChestMenu;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,7 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Admin editor for one shop category: configure its items, its slot inside
  * the 30-slot shop menu, its name and its icon, or delete it.
  */
-public class CategoryAdminGui extends GenericContainerScreenHandler {
+public class CategoryAdminGui extends ChestMenu {
 
     public static final int ROWS = 6;
     public static final int SIZE = ROWS * 9;
@@ -48,28 +48,28 @@ public class CategoryAdminGui extends GenericContainerScreenHandler {
     /** Two-step confirmation for deletions: player -> timestamp. */
     private static final Map<UUID, Long> DELETE_CONFIRM = new ConcurrentHashMap<>();
 
-    private final SimpleInventory inventory;
+    private final SimpleContainer inventory;
     private final String categoryId;
     private final List<String> itemIds = new ArrayList<>();
     private final Map<Integer, String> itemBySlot = new HashMap<>();
     private int page;
 
-    public static void open(ServerPlayerEntity player, String categoryId) {
+    public static void open(ServerPlayer player, String categoryId) {
         ShopCategory category = ShopManager.get().category(categoryId);
         if (category == null) {
-            player.sendMessage(Text.literal("That category no longer exists.").formatted(Formatting.RED), false);
+            player.sendSystemMessage(Component.literal("That category no longer exists.").withStyle(ChatFormatting.RED), false);
             ShopAdminMainGui.open(player);
             return;
         }
-        Text title = ColorUtils.legacy("&8Edit: ").append(ColorUtils.legacy(category.getName()));
-        SimpleInventory inventory = new SimpleInventory(SIZE);
-        player.openHandledScreen(new SimpleNamedScreenHandlerFactory(
+        Component title = ColorUtils.legacy("&8Edit: ").append(ColorUtils.legacy(category.getName()));
+        SimpleContainer inventory = new SimpleContainer(SIZE);
+        player.openMenu(new SimpleMenuProvider(
                 (syncId, playerInventory, p) -> new CategoryAdminGui(syncId, playerInventory, inventory, categoryId),
                 title));
     }
 
-    private CategoryAdminGui(int syncId, PlayerInventory playerInventory, SimpleInventory inventory, String categoryId) {
-        super(ScreenHandlerType.GENERIC_9X6, syncId, playerInventory, inventory, ROWS);
+    private CategoryAdminGui(int syncId, Inventory playerInventory, SimpleContainer inventory, String categoryId) {
+        super(MenuType.GENERIC_9x6, syncId, playerInventory, inventory, ROWS);
         this.inventory = inventory;
         this.categoryId = categoryId;
         refresh();
@@ -80,11 +80,11 @@ public class CategoryAdminGui extends GenericContainerScreenHandler {
         itemBySlot.clear();
         itemIds.clear();
         for (int slot = 0; slot < SIZE; slot++) {
-            inventory.setStack(slot, GuiElements.filler());
+            inventory.setItem(slot, GuiElements.filler());
         }
         // Clear the work area (empty air looks like real shop slots)
         for (int slot = 0; slot < CONTENT_SLOTS; slot++) {
-            inventory.setStack(slot, ItemStack.EMPTY);
+            inventory.setItem(slot, ItemStack.EMPTY);
         }
         if (category == null) {
             return;
@@ -97,72 +97,72 @@ public class CategoryAdminGui extends GenericContainerScreenHandler {
             String itemId = itemIds.get(start + slot);
             ShopItem shopItem = category.getItems().get(itemId);
             ItemStack display = new ItemStack(ShopManager.itemOf(itemId));
-            GuiElements.name(display, Text.literal(ShopManager.itemOf(itemId).getName().getString())
-                    .formatted(Formatting.YELLOW));
+            GuiElements.name(display, Component.literal(ShopManager.itemOf(itemId).getDescription().getString())
+                    .withStyle(ChatFormatting.YELLOW));
             GuiElements.lore(display, List.of(
-                    Text.literal("Buy: " + (shopItem.isBuyable() ? MoneyUtil.format(shopItem.getBuy()) : "—"))
-                            .formatted(Formatting.GREEN),
-                    Text.literal("Sell: " + (shopItem.isSellable() ? MoneyUtil.format(shopItem.getSell()) : "—"))
-                            .formatted(Formatting.GOLD),
-                    Text.literal("Order #" + (start + slot + 1)).formatted(Formatting.DARK_GRAY),
-                    Text.literal(" "),
-                    Text.literal("Click to configure").formatted(Formatting.AQUA)));
-            inventory.setStack(slot, display);
+                    Component.literal("Buy: " + (shopItem.isBuyable() ? MoneyUtil.format(shopItem.getBuy()) : "—"))
+                            .withStyle(ChatFormatting.GREEN),
+                    Component.literal("Sell: " + (shopItem.isSellable() ? MoneyUtil.format(shopItem.getSell()) : "—"))
+                            .withStyle(ChatFormatting.GOLD),
+                    Component.literal("Order #" + (start + slot + 1)).withStyle(ChatFormatting.DARK_GRAY),
+                    Component.literal(" "),
+                    Component.literal("Click to configure").withStyle(ChatFormatting.AQUA)));
+            inventory.setItem(slot, display);
             itemBySlot.put(slot, itemId);
         }
 
         // Bottom row controls
         ItemStack back = new ItemStack(Items.ARROW);
-        GuiElements.name(back, Text.literal("« Back to Shop Admin").formatted(Formatting.YELLOW));
-        inventory.setStack(SLOT_BACK, back);
+        GuiElements.name(back, Component.literal("« Back to Shop Admin").withStyle(ChatFormatting.YELLOW));
+        inventory.setItem(SLOT_BACK, back);
 
         ItemStack addItem = new ItemStack(Items.EMERALD);
-        GuiElements.name(addItem, Text.literal("+ Add Item").formatted(Formatting.GREEN));
+        GuiElements.name(addItem, Component.literal("+ Add Item").withStyle(ChatFormatting.GREEN));
         GuiElements.lore(addItem, List.of(
-                Text.literal("Type an item id (e.g. minecraft:stone)").formatted(Formatting.GRAY),
-                Text.literal("in the anvil. Or hold it and run").formatted(Formatting.GRAY),
-                Text.literal("/economyhanditem add <buy> <sell>.").formatted(Formatting.DARK_GRAY)));
-        inventory.setStack(SLOT_ADD_ITEM, addItem);
+                Component.literal("Type an item id (e.g. minecraft:stone)").withStyle(ChatFormatting.GRAY),
+                Component.literal("in the anvil. Or hold it and run").withStyle(ChatFormatting.GRAY),
+                Component.literal("/economyhanditem add <buy> <sell>.").withStyle(ChatFormatting.DARK_GRAY)));
+        inventory.setItem(SLOT_ADD_ITEM, addItem);
 
         ItemStack menuSlot = new ItemStack(Items.COMPARATOR);
-        GuiElements.name(menuSlot, Text.literal("Menu Slot: " + category.getSlot()).formatted(Formatting.AQUA));
+        GuiElements.name(menuSlot, Component.literal("Menu Slot: " + category.getSlot()).withStyle(ChatFormatting.AQUA));
         GuiElements.lore(menuSlot, List.of(
-                Text.literal("Where this category sits in the").formatted(Formatting.GRAY),
-                Text.literal("30-slot shop menu (0-29).").formatted(Formatting.GRAY),
-                Text.literal("◂ Left-click: -1").formatted(Formatting.YELLOW),
-                Text.literal("▸ Right-click: +1").formatted(Formatting.YELLOW),
-                Text.literal("Shift-click: jump by 9").formatted(Formatting.DARK_GRAY)));
-        inventory.setStack(SLOT_MENU_SLOT, menuSlot);
+                Component.literal("Where this category sits in the").withStyle(ChatFormatting.GRAY),
+                Component.literal("30-slot shop menu (0-29).").withStyle(ChatFormatting.GRAY),
+                Component.literal("◂ Left-click: -1").withStyle(ChatFormatting.YELLOW),
+                Component.literal("▸ Right-click: +1").withStyle(ChatFormatting.YELLOW),
+                Component.literal("Shift-click: jump by 9").withStyle(ChatFormatting.DARK_GRAY)));
+        inventory.setItem(SLOT_MENU_SLOT, menuSlot);
 
         ItemStack rename = new ItemStack(Items.NAME_TAG);
-        GuiElements.name(rename, Text.literal("Rename Category").formatted(Formatting.AQUA));
-        GuiElements.lore(rename, List.of(Text.literal("Supports & codes and &#RRGGBB.").formatted(Formatting.DARK_GRAY)));
-        inventory.setStack(SLOT_RENAME, rename);
+        GuiElements.name(rename, Component.literal("Rename Category").withStyle(ChatFormatting.AQUA));
+        GuiElements.lore(rename, List.of(Component.literal("Supports & codes and &#RRGGBB.").withStyle(ChatFormatting.DARK_GRAY)));
+        inventory.setItem(SLOT_RENAME, rename);
 
         ItemStack icon = new ItemStack(Items.ITEM_FRAME);
-        GuiElements.name(icon, Text.literal("Change Icon").formatted(Formatting.AQUA));
-        GuiElements.lore(icon, List.of(Text.literal("Type an item id in the anvil.").formatted(Formatting.GRAY)));
-        inventory.setStack(SLOT_ICON, icon);
+        GuiElements.name(icon, Component.literal("Change Icon").withStyle(ChatFormatting.AQUA));
+        GuiElements.lore(icon, List.of(Component.literal("Type an item id in the anvil.").withStyle(ChatFormatting.GRAY)));
+        inventory.setItem(SLOT_ICON, icon);
 
         ItemStack delete = new ItemStack(Items.TNT);
-        GuiElements.name(delete, Text.literal("Delete Category").formatted(Formatting.RED));
-        GuiElements.lore(delete, List.of(Text.literal("Click twice to confirm!").formatted(Formatting.DARK_GRAY)));
-        inventory.setStack(SLOT_DELETE, delete);
+        GuiElements.name(delete, Component.literal("Delete Category").withStyle(ChatFormatting.RED));
+        GuiElements.lore(delete, List.of(Component.literal("Click twice to confirm!").withStyle(ChatFormatting.DARK_GRAY)));
+        inventory.setItem(SLOT_DELETE, delete);
 
         ItemStack close = new ItemStack(Items.BARRIER);
-        GuiElements.name(close, Text.literal("Close").formatted(Formatting.RED));
-        inventory.setStack(SLOT_CLOSE, close);
+        GuiElements.name(close, Component.literal("Close").withStyle(ChatFormatting.RED));
+        inventory.setItem(SLOT_CLOSE, close);
     }
 
     @Override
-    public void onSlotClick(int slotIndex, int button, SlotActionType actionType, PlayerEntity player) {
-        if (!(player instanceof ServerPlayerEntity serverPlayer) || slotIndex < 0 || slotIndex >= SIZE) {
+    public void clicked(int slotIndex, int button, ClickType actionType, Player player) {
+        if (!(player instanceof ServerPlayer serverPlayer) || slotIndex < 0 || slotIndex >= SIZE) {
             return;
         }
         ShopManager manager = ShopManager.get();
         ShopCategory category = manager.category(categoryId);
         if (category == null) {
-            serverPlayer.closeScreenHandler();
+            serverPlayer.closeContainer();
             ShopAdminMainGui.open(serverPlayer);
             return;
         }
@@ -180,7 +180,7 @@ public class CategoryAdminGui extends GenericContainerScreenHandler {
                 clickSound(serverPlayer);
                 TextInputGui.open(serverPlayer, ColorUtils.legacy("&8&lItem id"), "minecraft:stone", id -> {
                     if (!ShopManager.isValidItem(id)) {
-                        serverPlayer.sendMessage(Text.literal("Unknown item '" + id + "'.").formatted(Formatting.RED), false);
+                        serverPlayer.sendSystemMessage(Component.literal("Unknown item '" + id + "'.").withStyle(ChatFormatting.RED), false);
                         return;
                     }
                     String normalized = id.contains(":") ? id.toLowerCase() : "minecraft:" + id.toLowerCase();
@@ -192,7 +192,7 @@ public class CategoryAdminGui extends GenericContainerScreenHandler {
                 });
             }
             case SLOT_MENU_SLOT -> {
-                int delta = actionType == SlotActionType.QUICK_MOVE ? 9 : 1;
+                int delta = actionType == ClickType.QUICK_MOVE ? 9 : 1;
                 int newSlot = category.getSlot() + (button == 1 ? -delta : delta);
                 if (newSlot < 0 || newSlot >= ShopManager.CATEGORY_SLOTS) {
                     error(serverPlayer, "Slots go from 0 to 29.");
@@ -223,7 +223,7 @@ public class CategoryAdminGui extends GenericContainerScreenHandler {
                 clickSound(serverPlayer);
                 TextInputGui.open(serverPlayer, ColorUtils.legacy("&8&lIcon item id"), category.getIcon(), id -> {
                     if (!ShopManager.isValidItem(id)) {
-                        serverPlayer.sendMessage(Text.literal("Unknown item '" + id + "'.").formatted(Formatting.RED), false);
+                        serverPlayer.sendSystemMessage(Component.literal("Unknown item '" + id + "'.").withStyle(ChatFormatting.RED), false);
                         return;
                     }
                     category.setIcon(id.contains(":") ? id.toLowerCase() : "minecraft:" + id.toLowerCase());
@@ -235,42 +235,42 @@ public class CategoryAdminGui extends GenericContainerScreenHandler {
             }
             case SLOT_DELETE -> {
                 long now = System.currentTimeMillis();
-                Long pending = DELETE_CONFIRM.get(serverPlayer.getUuid());
+                Long pending = DELETE_CONFIRM.get(serverPlayer.getUUID());
                 if (pending == null || now - pending > 10_000) {
-                    DELETE_CONFIRM.put(serverPlayer.getUuid(), now);
-                    serverPlayer.sendMessage(Text.literal("Click DELETE again to really delete category '"
-                            + categoryId + "'!").formatted(Formatting.RED), false);
+                    DELETE_CONFIRM.put(serverPlayer.getUUID(), now);
+                    serverPlayer.sendSystemMessage(Component.literal("Click DELETE again to really delete category '"
+                            + categoryId + "'!").withStyle(ChatFormatting.RED), false);
                     return;
                 }
-                DELETE_CONFIRM.remove(serverPlayer.getUuid());
+                DELETE_CONFIRM.remove(serverPlayer.getUUID());
                 manager.removeCategory(categoryId);
                 manager.save();
                 ShopAdminMainGui.refreshShops();
-                serverPlayer.sendMessage(Text.literal("Deleted category '" + categoryId + "'.").formatted(Formatting.GREEN), false);
+                serverPlayer.sendSystemMessage(Component.literal("Deleted category '" + categoryId + "'.").withStyle(ChatFormatting.GREEN), false);
                 ShopAdminMainGui.open(serverPlayer);
             }
-            case SLOT_CLOSE -> serverPlayer.closeScreenHandler();
+            case SLOT_CLOSE -> serverPlayer.closeContainer();
             default -> {
             }
         }
     }
 
-    private static void clickSound(ServerPlayerEntity player) {
+    private static void clickSound(ServerPlayer player) {
         player.playSound(SoundEvents.UI_BUTTON_CLICK.value(), 0.5f, 1.0f);
     }
 
-    private static void error(ServerPlayerEntity player, String message) {
-        player.sendMessage(Text.literal(message).formatted(Formatting.RED), false);
+    private static void error(ServerPlayer player, String message) {
+        player.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.RED), false);
         player.playSound(SoundEvents.ENTITY_VILLAGER_NO, 0.7f, 1.0f);
     }
 
     @Override
-    public ItemStack quickMove(PlayerEntity player, int slot) {
+    public ItemStack quickMoveStack(Player player, int slot) {
         return ItemStack.EMPTY;
     }
 
     @Override
-    public boolean canUse(PlayerEntity player) {
+    public boolean stillValid(Player player) {
         return true;
     }
 }

@@ -5,11 +5,11 @@ import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
@@ -51,9 +51,9 @@ public final class CombatManager {
 
         // Tag both players on PvP damage (melee, arrows, anything).
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
-            if (entity instanceof ServerPlayerEntity victim
-                    && source.getAttacker() instanceof ServerPlayerEntity attacker
-                    && !attacker.getUuid().equals(victim.getUuid())) {
+            if (entity instanceof ServerPlayer victim
+                    && source.getAttacker() instanceof ServerPlayer attacker
+                    && !attacker.getUUID().equals(victim.getUUID())) {
                 tag(attacker);
                 tag(victim);
             }
@@ -61,62 +61,62 @@ public final class CombatManager {
         });
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            ServerPlayerEntity player = handler.getPlayer();
-            if (isTagged(player.getUuid())) {
-                player.sendMessage(Text.literal("You are still in combat for " + secondsLeft(player.getUuid())
-                        + "s. Logging out means death!").formatted(Formatting.RED), false);
+            ServerPlayer player = handler.player;
+            if (isTagged(player.getUUID())) {
+                player.sendSystemMessage(Component.literal("You are still in combat for " + secondsLeft(player.getUUID())
+                        + "s. Logging out means death!").withStyle(ChatFormatting.RED), false);
             }
         });
 
         // Combat logging: die and drop your stuff.
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            ServerPlayerEntity player = handler.getPlayer();
-            if (!isTagged(player.getUuid()) || serverStopping) {
+            ServerPlayer player = handler.player;
+            if (!isTagged(player.getUUID()) || serverStopping) {
                 return;
             }
-            untag(player.getUuid());
+            untag(player.getUUID());
             if (player.isCreative() || player.isSpectator()) {
                 return;
             }
             LivingEntity living = player;
-            ServerWorld world = (ServerWorld) player.getWorld();
-            world.getServer().getPlayerManager().broadcast(Text.empty()
-                    .append(Text.literal(player.getName().getString()).formatted(Formatting.RED))
-                    .append(Text.literal(" logged out during combat and died!").formatted(Formatting.GRAY)), false);
-            living.damage(world, living.getDamageSources().generic(), Float.MAX_VALUE);
+            ServerLevel world = (ServerLevel) player.level();
+            world.getServer().getPlayerList().broadcastSystemMessage(Component.empty()
+                    .append(Component.literal(player.getName().getString()).withStyle(ChatFormatting.RED))
+                    .append(Component.literal(" logged out during combat and died!").withStyle(ChatFormatting.GRAY)), false);
+            living.hurt(world, living.damageSources().generic(), Float.MAX_VALUE);
         });
 
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> serverStopping = true);
 
         // Action bar countdown + expiry.
         ServerTickEvents.END_SERVER_TICK.register(server -> {
-            if (server.getTicks() % 20 != 0) {
+            if (server.getTickCount() % 20 != 0) {
                 return;
             }
-            for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-                long left = taggedMillisLeft(player.getUuid());
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                long left = taggedMillisLeft(player.getUUID());
                 if (left < 0) {
                     sendFeedbackIfExpires(player);
                 } else if (left > 0) {
-                    player.sendMessage(Text.literal("⚔ In combat: " + ((left + 999) / 1000) + "s")
-                            .formatted(Formatting.RED), true);
+                    player.sendSystemMessage(Component.literal("⚔ In combat: " + ((left + 999) / 1000) + "s")
+                            .withStyle(ChatFormatting.RED), true);
                 }
             }
         });
     }
 
     /** Notifies a player the moment their tag runs out. */
-    private static void sendFeedbackIfExpires(ServerPlayerEntity player) {
-        if (TAGGED_UNTIL.remove(player.getUuid()) != null) {
+    private static void sendFeedbackIfExpires(ServerPlayer player) {
+        if (TAGGED_UNTIL.remove(player.getUUID()) != null) {
             dirty = true;
-            player.sendMessage(Text.literal("You are no longer in combat.").formatted(Formatting.GREEN), false);
+            player.sendSystemMessage(Component.literal("You are no longer in combat.").withStyle(ChatFormatting.GREEN), false);
         }
     }
 
     // --------------------------------------------------------------- logic
 
-    public static void tag(ServerPlayerEntity player) {
-        TAGGED_UNTIL.put(player.getUuid(), System.currentTimeMillis() + TAG_MILLIS);
+    public static void tag(ServerPlayer player) {
+        TAGGED_UNTIL.put(player.getUUID(), System.currentTimeMillis() + TAG_MILLIS);
         dirty = true;
     }
 
@@ -143,12 +143,12 @@ public final class CombatManager {
     }
 
     /** Denies an action during combat, telling the player why. */
-    public static boolean denyIfTagged(ServerPlayerEntity player, String action) {
-        if (!isTagged(player.getUuid())) {
+    public static boolean denyIfTagged(ServerPlayer player, String action) {
+        if (!isTagged(player.getUUID())) {
             return false;
         }
-        player.sendMessage(Text.literal("You can't " + action + " while in combat! (" +
-                secondsLeft(player.getUuid()) + "s left)").formatted(Formatting.RED), false);
+        player.sendSystemMessage(Component.literal("You can't " + action + " while in combat! (" +
+                secondsLeft(player.getUUID()) + "s left)").withStyle(ChatFormatting.RED), false);
         return true;
     }
 

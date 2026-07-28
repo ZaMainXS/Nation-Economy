@@ -1,7 +1,7 @@
 package com.nationeconomy.economy;
 
 import com.nationeconomy.util.JsonFiles;
-import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -75,8 +75,8 @@ public final class EconomyManager {
         return balances.getOrDefault(uuid, STARTING_BALANCE);
     }
 
-    public double balance(ServerPlayerEntity player) {
-        return balance(player.getUuid());
+    public double balance(ServerPlayer player) {
+        return balance(player.getUUID());
     }
 
     public void set(UUID uuid, double amount) {

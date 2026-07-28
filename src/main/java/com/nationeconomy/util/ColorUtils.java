@@ -1,10 +1,10 @@
 package com.nationeconomy.util;
 
-import net.minecraft.text.MutableText;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.text.TextColor;
-import net.minecraft.util.Formatting;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TextColor;
+import net.minecraft.ChatFormatting;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.LinkedHashMap;
@@ -13,7 +13,7 @@ import java.util.Map;
 
 /**
  * Helpers for colors: legacy "&" formatting codes (including "&#RRGGBB" hex
- * colors), named colors and conversion to Minecraft {@link Formatting}.
+ * colors), named colors and conversion to Minecraft {@link ChatFormatting}.
  */
 public final class ColorUtils {
 
@@ -102,26 +102,26 @@ public final class ColorUtils {
     }
 
     /** Simple one-shot: literal text with the given RGB color. */
-    public static MutableText colored(String text, int rgb) {
-        return Text.literal(text).styled(style -> style.withColor(rgb(rgb)));
+    public static MutableComponent colored(String text, int rgb) {
+        return Component.literal(text).withStyle(style -> style.withColor(rgb(rgb)));
     }
 
-    /** Simple one-shot: literal text colored with a vanilla {@link Formatting}. */
-    public static MutableText formatted(String text, Formatting formatting) {
-        return Text.literal(text).formatted(formatting);
+    /** Simple one-shot: literal text colored with a vanilla {@link ChatFormatting}. */
+    public static MutableComponent formatted(String text, ChatFormatting formatting) {
+        return Component.literal(text).withStyle(formatting);
     }
 
     /**
-     * Translates legacy formatting codes into styled {@link Text}.
+     * Translates legacy formatting codes into styled {@link Component}.
      *
      * <p>Supports {@code &0-&9 &a-&f} colors, {@code &l &o &n &m &k} styles,
      * {@code &r} reset and hex colors in the form {@code &#RRGGBB}.
      */
-    public static MutableText legacy(String raw) {
+    public static MutableComponent legacy(String raw) {
         if (raw == null) {
-            return Text.empty();
+            return Component.empty();
         }
-        MutableText result = Text.empty();
+        MutableComponent result = Component.empty();
         StringBuilder segment = new StringBuilder();
         Style style = Style.EMPTY;
 
@@ -134,7 +134,7 @@ public final class ColorUtils {
                     String hex = raw.substring(i + 2, Math.min(i + 8, raw.length()));
                     if (hex.matches("(?i)[0-9a-f]{6}")) {
                         if (segment.length() > 0) {
-                            result.append(Text.literal(segment.toString()).setStyle(style));
+                            result.append(Component.literal(segment.toString()).setStyle(style));
                             segment.setLength(0);
                         }
                         style = Style.EMPTY.withColor(TextColor.fromRgb(Integer.parseInt(hex, 16)));
@@ -142,25 +142,25 @@ public final class ColorUtils {
                         continue;
                     }
                 }
-                Formatting fmt = Formatting.byCode(next);
+                ChatFormatting fmt = ChatFormatting.getByCode(next);
                 if (fmt != null) {
                     if (segment.length() > 0) {
-                        result.append(Text.literal(segment.toString()).setStyle(style));
+                        result.append(Component.literal(segment.toString()).setStyle(style));
                         segment.setLength(0);
                     }
                     if (fmt.isColor()) {
                         style = Style.EMPTY.withColor(fmt);
-                    } else if (fmt == Formatting.BOLD) {
+                    } else if (fmt == ChatFormatting.BOLD) {
                         style = style.withBold(true);
-                    } else if (fmt == Formatting.ITALIC) {
+                    } else if (fmt == ChatFormatting.ITALIC) {
                         style = style.withItalic(true);
-                    } else if (fmt == Formatting.UNDERLINE) {
+                    } else if (fmt == ChatFormatting.UNDERLINE) {
                         style = style.withUnderline(true);
-                    } else if (fmt == Formatting.STRIKETHROUGH) {
+                    } else if (fmt == ChatFormatting.STRIKETHROUGH) {
                         style = style.withStrikethrough(true);
-                    } else if (fmt == Formatting.OBFUSCATED) {
+                    } else if (fmt == ChatFormatting.OBFUSCATED) {
                         style = style.withObfuscated(true);
-                    } else if (fmt == Formatting.RESET) {
+                    } else if (fmt == ChatFormatting.RESET) {
                         style = Style.EMPTY;
                     }
                     i++;
@@ -170,7 +170,7 @@ public final class ColorUtils {
             segment.append(c);
         }
         if (segment.length() > 0) {
-            result.append(Text.literal(segment.toString()).setStyle(style));
+            result.append(Component.literal(segment.toString()).setStyle(style));
         }
         return result;
     }
@@ -190,7 +190,7 @@ public final class ColorUtils {
                     i += 7;
                     continue;
                 }
-                if (Formatting.byCode(next) != null) {
+                if (ChatFormatting.getByCode(next) != null) {
                     i++;
                     continue;
                 }
@@ -201,21 +201,21 @@ public final class ColorUtils {
     }
 
     /**
-     * Finds the closest vanilla {@link Formatting} color for an arbitrary RGB
+     * Finds the closest vanilla {@link ChatFormatting} color for an arbitrary RGB
      * value. Used for scoreboard team colors, which only support the 16
      * vanilla colors.
      */
-    public static Formatting nearestFormatting(int rgb) {
+    public static ChatFormatting nearestFormatting(int rgb) {
         int r = (rgb >> 16) & 0xFF;
         int g = (rgb >> 8) & 0xFF;
         int b = rgb & 0xFF;
-        Formatting best = Formatting.WHITE;
+        ChatFormatting best = ChatFormatting.WHITE;
         long bestDistance = Long.MAX_VALUE;
-        for (Formatting formatting : Formatting.values()) {
-            if (!formatting.isColor() || formatting.getColorValue() == null) {
+        for (ChatFormatting formatting : ChatFormatting.values()) {
+            if (!formatting.isColor() || formatting.getColor() == null) {
                 continue;
             }
-            int value = formatting.getColorValue();
+            int value = formatting.getColor();
             int fr = (value >> 16) & 0xFF;
             int fg = (value >> 8) & 0xFF;
             int fb = value & 0xFF;

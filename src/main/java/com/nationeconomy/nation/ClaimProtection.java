@@ -6,57 +6,57 @@ import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseItemCallback;
-import net.minecraft.block.AbstractButtonBlock;
-import net.minecraft.block.AbstractRedstoneGateBlock;
-import net.minecraft.block.AbstractSignBlock;
-import net.minecraft.block.AnvilBlock;
-import net.minecraft.block.BeaconBlock;
-import net.minecraft.block.BedBlock;
-import net.minecraft.block.BellBlock;
-import net.minecraft.block.Block;
-import net.minecraft.block.CakeBlock;
-import net.minecraft.block.CampfireBlock;
-import net.minecraft.block.CartographyTableBlock;
-import net.minecraft.block.CraftingTableBlock;
-import net.minecraft.block.DaylightDetectorBlock;
-import net.minecraft.block.DoorBlock;
-import net.minecraft.block.DragonEggBlock;
-import net.minecraft.block.EnchantingTableBlock;
-import net.minecraft.block.FenceGateBlock;
-import net.minecraft.block.FlowerPotBlock;
-import net.minecraft.block.GrindstoneBlock;
-import net.minecraft.block.JukeboxBlock;
-import net.minecraft.block.LecternBlock;
-import net.minecraft.block.LeverBlock;
-import net.minecraft.block.LoomBlock;
-import net.minecraft.block.NoteBlock;
-import net.minecraft.block.RespawnAnchorBlock;
-import net.minecraft.block.SmithingTableBlock;
-import net.minecraft.block.StonecutterBlock;
-import net.minecraft.block.TrapdoorBlock;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.inventory.Inventory;
-import net.minecraft.item.BlockItem;
-import net.minecraft.item.BoatItem;
-import net.minecraft.item.BucketItem;
-import net.minecraft.item.ItemStack;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.text.Text;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.TypedActionResult;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.RaycastContext;
-import net.minecraft.world.World;
+import net.minecraft.world.level.block.ButtonBlock;
+import net.minecraft.world.level.block.DiodeBlock;
+import net.minecraft.world.level.block.SignBlock;
+import net.minecraft.world.level.block.AnvilBlock;
+import net.minecraft.world.level.block.BeaconBlock;
+import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.block.BellBlock;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.CakeBlock;
+import net.minecraft.world.level.block.CampfireBlock;
+import net.minecraft.world.level.block.CartographyTableBlock;
+import net.minecraft.world.level.block.CraftingTableBlock;
+import net.minecraft.world.level.block.DaylightDetectorBlock;
+import net.minecraft.world.level.block.DoorBlock;
+import net.minecraft.world.level.block.DragonEggBlock;
+import net.minecraft.world.level.block.EnchantmentTableBlock;
+import net.minecraft.world.level.block.FenceGateBlock;
+import net.minecraft.world.level.block.FlowerPotBlock;
+import net.minecraft.world.level.block.GrindstoneBlock;
+import net.minecraft.world.level.block.JukeboxBlock;
+import net.minecraft.world.level.block.LecternBlock;
+import net.minecraft.world.level.block.LeverBlock;
+import net.minecraft.world.level.block.LoomBlock;
+import net.minecraft.world.level.block.NoteBlock;
+import net.minecraft.world.level.block.RespawnAnchorBlock;
+import net.minecraft.world.level.block.SmithingTableBlock;
+import net.minecraft.world.level.block.StonecutterBlock;
+import net.minecraft.world.level.block.TrapDoorBlock;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.Container;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.BoatItem;
+import net.minecraft.world.item.BucketItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.ChatFormatting;
+
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
@@ -97,24 +97,24 @@ public final class ClaimProtection {
 
     // ------------------------------------------------------------ breaking
 
-    private static ActionResult onAttackBlock(PlayerEntity player, World world, Hand hand, BlockPos pos, Direction direction) {
-        if (world.isClient() || !(player instanceof ServerPlayerEntity serverPlayer)) {
-            return ActionResult.PASS;
+    private static InteractionResult onAttackBlock(Player player, Level world, InteractionHand hand, BlockPos pos, Direction direction) {
+        if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
+            return InteractionResult.PASS;
         }
 
         // Claim shovel: left click selects corner 1.
-        if (ClaimTool.isClaimTool(player.getMainHandStack())) {
+        if (ClaimTool.isClaimTool(player.getMainHandItem())) {
             selectCorner(serverPlayer, world, pos, true);
-            return ActionResult.FAIL; // never break blocks with the tool
+            return InteractionResult.FAIL; // never break blocks with the tool
         }
 
-        String worldId = world.getRegistryKey().getValue().toString();
+        String worldId = world.dimension().location().toString();
         Nation nation = NationManager.get().claimAt(worldId, pos.getX(), pos.getZ());
         if (nation == null) {
-            return ActionResult.PASS; // wilderness
+            return InteractionResult.PASS; // wilderness
         }
-        if (nation.hasPermission(serverPlayer.getUuid(), NationPermission.BREAK) || isOperatorBypass(serverPlayer)) {
-            return ActionResult.PASS;
+        if (nation.hasPermission(serverPlayer.getUUID(), NationPermission.BREAK) || isOperatorBypass(serverPlayer)) {
+            return InteractionResult.PASS;
         }
 
         // Raiding: outsiders can break in, but every block takes 1000 hits.
@@ -122,58 +122,58 @@ public final class ClaimProtection {
     }
 
     /** Counts one raid hit against a protected block; breaks it after {@link RaidManager#RAID_HITS}. */
-    private static ActionResult raidHit(ServerPlayerEntity player, World world, BlockPos pos, Nation nation) {
-        String worldId = world.getRegistryKey().getValue().toString();
+    private static InteractionResult raidHit(ServerPlayer player, Level world, BlockPos pos, Nation nation) {
+        String worldId = world.dimension().location().toString();
 
         if (world.getBlockState(pos).getHardness(world, pos) < 0) {
-            player.sendMessage(Text.literal("This block cannot be raided.").formatted(Formatting.RED), true);
-            return ActionResult.FAIL;
+            player.sendSystemMessage(Component.literal("This block cannot be raided.").withStyle(ChatFormatting.RED), true);
+            return InteractionResult.FAIL;
         }
 
         int hits = RaidManager.get().hit(worldId, pos);
         if (hits >= RaidManager.RAID_HITS) {
             RaidManager.get().clear(worldId, pos);
             world.breakBlock(pos, true, player);
-            player.sendMessage(Text.literal("You broke through " + nation.getName() + "'s defenses!")
-                    .formatted(Formatting.GOLD), false);
-            return ActionResult.FAIL;
+            player.sendSystemMessage(Component.literal("You broke through " + nation.getName() + "'s defenses!")
+                    .withStyle(ChatFormatting.GOLD), false);
+            return InteractionResult.FAIL;
         }
 
         if (hits == 1 || hits % 25 == 0 || hits >= RaidManager.RAID_HITS - 10) {
-            player.sendMessage(Text.literal("Raiding " + nation.getName() + ": " + hits + "/"
-                    + RaidManager.RAID_HITS + " hits").formatted(Formatting.RED), true);
+            player.sendSystemMessage(Component.literal("Raiding " + nation.getName() + ": " + hits + "/"
+                    + RaidManager.RAID_HITS + " hits").withStyle(ChatFormatting.RED), true);
         }
-        if (hits % 25 == 0 && world instanceof ServerWorld serverWorld) {
-            serverWorld.spawnParticles(ParticleTypes.CRIT,
+        if (hits % 25 == 0 && world instanceof ServerLevel serverWorld) {
+            serverWorld.sendParticles(ParticleTypes.CRIT,
                     pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 5, 0.3, 0.3, 0.3, 0.02);
         }
-        return ActionResult.FAIL;
+        return InteractionResult.FAIL;
     }
 
     // -------------------------------------------------------- block usage
 
-    private static ActionResult onUseBlock(PlayerEntity player, World world, Hand hand, BlockHitResult hitResult) {
-        if (world.isClient() || !(player instanceof ServerPlayerEntity serverPlayer)) {
-            return ActionResult.PASS;
+    private static InteractionResult onUseBlock(Player player, Level world, InteractionHand hand, BlockHitResult hitResult) {
+        if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
+            return InteractionResult.PASS;
         }
         BlockPos pos = hitResult.getBlockPos();
-        ItemStack held = player.getStackInHand(hand);
+        ItemStack held = player.getItemInHand(hand);
 
         // Claim shovel: right click selects corner 2.
-        if (hand == Hand.MAIN_HAND && ClaimTool.isClaimTool(held)) {
+        if (hand == InteractionHand.MAIN_HAND && ClaimTool.isClaimTool(held)) {
             selectCorner(serverPlayer, world, pos, false);
-            return ActionResult.FAIL;
+            return InteractionResult.FAIL;
         }
 
         NationPermission permission = classifyBlockUse(player, world, pos, held);
         if (permission == null) {
-            return ActionResult.PASS; // clicking a plain block with an empty hand does nothing anyway
+            return InteractionResult.PASS; // clicking a plain block with an empty hand does nothing anyway
         }
         if (allowed(serverPlayer, world, pos, permission)) {
-            return ActionResult.PASS;
+            return InteractionResult.PASS;
         }
         deny(serverPlayer, world, pos);
-        return ActionResult.FAIL;
+        return InteractionResult.FAIL;
     }
 
     /**
@@ -181,12 +181,12 @@ public final class ClaimProtection {
      * or {@code null} when the interaction is meaningless.
      */
     @Nullable
-    private static NationPermission classifyBlockUse(PlayerEntity player, World world, BlockPos pos, ItemStack held) {
+    private static NationPermission classifyBlockUse(Player player, Level world, BlockPos pos, ItemStack held) {
         Block block = world.getBlockState(pos).getBlock();
         BlockEntity blockEntity = world.getBlockEntity(pos);
 
         // Containers (chests, barrels, furnaces, hoppers, ...) need CHEST.
-        boolean container = blockEntity instanceof Inventory;
+        boolean container = blockEntity instanceof Container;
         if (container && !player.isSneaking()) {
             return NationPermission.CHEST;
         }
@@ -219,102 +219,102 @@ public final class ClaimProtection {
 
     // --------------------------------------------------------- item usage
 
-    private static TypedActionResult<ItemStack> onUseItem(PlayerEntity player, World world, Hand hand) {
-        ItemStack stack = player.getStackInHand(hand);
-        if (world.isClient() || !(player instanceof ServerPlayerEntity serverPlayer)) {
-            return TypedActionResult.pass(stack);
+    private static InteractionResult onUseItem(Player player, Level world, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
+            return InteractionResult.PASS;
         }
         // Buckets and boats aimed through the air: find the destination block
         // with a raycast and require PLACE there.
         if (stack.getItem() instanceof BucketItem || stack.getItem() instanceof BoatItem) {
-            Vec3d start = player.getCameraPosVec(1.0F);
-            Vec3d end = start.add(player.getRotationVec(1.0F).multiply(5.0));
-            BlockHitResult hit = world.raycast(new RaycastContext(start, end,
-                    RaycastContext.ShapeType.OUTLINE, RaycastContext.FluidHandling.ANY, player));
+            Vec3 start = player.getEyePosition();
+            Vec3 end = start.add(player.getViewVector(1.0F).scale(5.0));
+            BlockHitResult hit = world.clip(new ClipContext(start, end,
+                    ClipContext.Block.OUTLINE, ClipContext.Fluid.ANY, player));
             if (hit.getType() == BlockHitResult.Type.BLOCK) {
-                BlockPos target = hit.getBlockPos().offset(hit.getSide());
+                BlockPos target = hit.getBlockPos().relative(hit.getSide());
                 if (!allowed(serverPlayer, world, target, NationPermission.PLACE)) {
                     deny(serverPlayer, world, target);
-                    return TypedActionResult.fail(stack);
+                    return InteractionResult.FAIL;
                 }
             }
         }
-        return TypedActionResult.pass(stack);
+        return InteractionResult.PASS;
     }
 
     // ------------------------------------------------------------ entities
 
-    private static ActionResult onUseEntity(PlayerEntity player, World world, Hand hand, Entity entity,
+    private static InteractionResult onUseEntity(Player player, Level world, InteractionHand hand, Entity entity,
                                             @Nullable EntityHitResult hitResult) {
-        if (world.isClient() || !(player instanceof ServerPlayerEntity serverPlayer)) {
-            return ActionResult.PASS;
+        if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
+            return InteractionResult.PASS;
         }
         // Nation core: right-click with a Core Healer (or peek at its health).
         if (CoreManager.handleUse(serverPlayer, entity, hand)) {
-            return ActionResult.FAIL;
+            return InteractionResult.FAIL;
         }
         if (allowed(serverPlayer, world, entity.getBlockPos(), NationPermission.USE)) {
-            return ActionResult.PASS;
+            return InteractionResult.PASS;
         }
         deny(serverPlayer, world, entity.getBlockPos());
-        return ActionResult.FAIL;
+        return InteractionResult.FAIL;
     }
 
-    private static ActionResult onAttackEntity(PlayerEntity player, World world, Hand hand, Entity entity,
+    private static InteractionResult onAttackEntity(Player player, Level world, InteractionHand hand, Entity entity,
                                                @Nullable EntityHitResult hitResult) {
-        if (world.isClient() || !(player instanceof ServerPlayerEntity serverPlayer)) {
-            return ActionResult.PASS;
+        if (world.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
+            return InteractionResult.PASS;
         }
         // Nation core: raid hits count towards destroying it.
         if (CoreManager.handleAttack(serverPlayer, entity)) {
-            return ActionResult.FAIL;
+            return InteractionResult.FAIL;
         }
         if (allowed(serverPlayer, world, entity.getBlockPos(), NationPermission.USE)) {
-            return ActionResult.PASS;
+            return InteractionResult.PASS;
         }
         deny(serverPlayer, world, entity.getBlockPos());
-        return ActionResult.FAIL;
+        return InteractionResult.FAIL;
     }
 
     // ------------------------------------------------------------- helpers
 
     /** Permission check including the operator bypass. */
-    private static boolean allowed(ServerPlayerEntity player, World world, BlockPos pos, NationPermission permission) {
+    private static boolean allowed(ServerPlayer player, Level world, BlockPos pos, NationPermission permission) {
         if (isOperatorBypass(player)) {
             return true;
         }
-        String worldId = world.getRegistryKey().getValue().toString();
-        return NationManager.get().canDo(player.getUuid(), worldId, pos.getX(), pos.getZ(), permission);
+        String worldId = world.dimension().location().toString();
+        return NationManager.get().canDo(player.getUUID(), worldId, pos.getX(), pos.getZ(), permission);
     }
 
-    private static boolean isOperatorBypass(ServerPlayerEntity player) {
-        return player.server.getPermissionLevel(player.getGameProfile()) >= 3;
+    private static boolean isOperatorBypass(ServerPlayer player) {
+        return player.server.getProfilePermissions(player.getGameProfile()) >= 3;
     }
 
     /** Sends a rate-limited "this land is protected" message. */
-    private static void deny(ServerPlayerEntity player, World world, BlockPos pos) {
+    private static void deny(ServerPlayer player, Level world, BlockPos pos) {
         long now = System.currentTimeMillis();
-        Long last = LAST_DENY_MESSAGE.get(player.getUuid());
+        Long last = LAST_DENY_MESSAGE.get(player.getUUID());
         if (last != null && now - last < 1000) {
             return;
         }
-        LAST_DENY_MESSAGE.put(player.getUuid(), now);
+        LAST_DENY_MESSAGE.put(player.getUUID(), now);
 
-        String worldId = world.getRegistryKey().getValue().toString();
+        String worldId = world.dimension().location().toString();
         Nation nation = NationManager.get().claimAt(worldId, pos.getX(), pos.getZ());
-        Text message = nation != null
-                ? Text.literal("Protected by ").formatted(Formatting.RED)
+        Component message = nation != null
+                ? Component.literal("Protected by ").withStyle(ChatFormatting.RED)
                 .append(ColorUtils.colored(nation.getName(), nation.getRgb()))
-                .append(Text.literal(". Ask for access!").formatted(Formatting.RED))
-                : Text.literal("You can't do that here.").formatted(Formatting.RED);
-        player.sendMessage(message, true);
+                .append(Component.literal(". Ask for access!").withStyle(ChatFormatting.RED))
+                : Component.literal("You can't do that here.").withStyle(ChatFormatting.RED);
+        player.sendSystemMessage(message, true);
     }
 
     // ------------------------------------------------------- corner picking
 
-    private static void selectCorner(ServerPlayerEntity player, World world, BlockPos pos, boolean first) {
-        NationManager.Selection selection = NationManager.get().selectionOf(player.getUuid());
-        String worldId = world.getRegistryKey().getValue().toString();
+    private static void selectCorner(ServerPlayer player, Level world, BlockPos pos, boolean first) {
+        NationManager.Selection selection = NationManager.get().selectionOf(player.getUUID());
+        String worldId = world.dimension().location().toString();
 
         // Changing worlds invalidates the other corner.
         if (selection.worldId != null && !selection.worldId.equals(worldId)) {
@@ -329,25 +329,25 @@ public final class ClaimProtection {
             selection.cornerB = pos.toImmutable();
         }
 
-        if (world instanceof ServerWorld serverWorld) {
-            serverWorld.spawnParticles(ParticleTypes.HAPPY_VILLAGER,
+        if (world instanceof ServerLevel serverWorld) {
+            serverWorld.sendParticles(ParticleTypes.HAPPY_VILLAGER,
                     pos.getX() + 0.5, pos.getY() + 1.0, pos.getZ() + 0.5, 10, 0.35, 0.35, 0.35, 0.02);
         }
 
         String cornerName = first ? "Corner 1" : "Corner 2";
-        player.sendMessage(Text.literal(cornerName + " set at ").formatted(Formatting.GREEN)
-                .append(Text.literal(pos.getX() + ", " + pos.getZ()).formatted(Formatting.AQUA)), false);
+        player.sendSystemMessage(Component.literal(cornerName + " set at ").withStyle(ChatFormatting.GREEN)
+                .append(Component.literal(pos.getX() + ", " + pos.getZ()).withStyle(ChatFormatting.AQUA)), false);
 
         if (selection.isComplete()) {
             long area = area(selection);
-            player.sendMessage(Text.literal("Selection: " + area + " blocks. ").formatted(Formatting.GRAY)
-                    .append(Text.literal("Run /claimland confirm to claim.").formatted(Formatting.YELLOW)), false);
+            player.sendSystemMessage(Component.literal("Selection: " + area + " blocks. ").withStyle(ChatFormatting.GRAY)
+                    .append(Component.literal("Run /claimland confirm to claim.").withStyle(ChatFormatting.YELLOW)), false);
 
             if (NationManager.get().overlaps(worldId, new Claim(worldId,
                     selection.cornerA.getX(), selection.cornerA.getZ(),
                     selection.cornerB.getX(), selection.cornerB.getZ()))) {
-                player.sendMessage(Text.literal("Warning: your selection overlaps another nation's land!")
-                        .formatted(Formatting.RED), false);
+                player.sendSystemMessage(Component.literal("Warning: your selection overlaps another nation's land!")
+                        .withStyle(ChatFormatting.RED), false);
             }
         }
     }

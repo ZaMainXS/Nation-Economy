@@ -2,12 +2,12 @@ package com.nationeconomy.nation;
 
 import com.nationeconomy.util.ColorUtils;
 import com.nationeconomy.util.KnownPlayers;
-import net.minecraft.scoreboard.Scoreboard;
-import net.minecraft.scoreboard.Team;
+import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 import java.util.UUID;
 
@@ -33,7 +33,7 @@ public final class NationTeams {
         Scoreboard scoreboard = server.getScoreboard();
 
         // Remove teams of nations that no longer exist.
-        for (Team team : scoreboard.getTeams().toArray(Team[]::new)) {
+        for (PlayerTeam team : scoreboard.getPlayerTeams().toArray(PlayerTeam[]::new)) {
             if (!team.getName().startsWith(ID_PREFIX)) {
                 continue;
             }
@@ -45,39 +45,39 @@ public final class NationTeams {
                 }
             }
             if (!stillExists) {
-                scoreboard.removeTeam(team);
+                scoreboard.removePlayerTeam(team);
             }
         }
 
         // Ensure all nation teams exist with the right style.
         for (Nation nation : NationManager.get().nations()) {
-            Team team = ensureTeam(server, nation);
+            PlayerTeam team = ensureTeam(server, nation);
             for (UUID member : nation.getMembers()) {
                 String name = KnownPlayers.nameOf(member);
                 if (name != null) {
-                    scoreboard.addScoreHolderToTeam(name, team);
+                    scoreboard.addPlayerToTeam(name, team);
                 }
             }
         }
     }
 
     /** Creates (or restyles) the team of a nation. */
-    public static Team ensureTeam(MinecraftServer server, Nation nation) {
+    public static PlayerTeam ensureTeam(MinecraftServer server, Nation nation) {
         Scoreboard scoreboard = server.getScoreboard();
         String teamId = nation.getTeamId();
-        Team team = scoreboard.getTeam(teamId);
+        PlayerTeam team = scoreboard.getPlayerTeam(teamId);
         if (team == null) {
             // Extremely unlikely id collision -> extend the id deterministically.
             int suffix = 2;
             String candidate = teamId;
-            while (scoreboard.getTeam(candidate) != null && candidate.length() < 16) {
+            while (scoreboard.getPlayerTeam(candidate) != null && candidate.length() < 16) {
                 candidate = teamId + suffix++;
             }
             teamId = candidate;
             nation.setTeamId(teamId);
-            team = scoreboard.addTeam(teamId);
+            team = scoreboard.addPlayerTeam(teamId);
         }
-        team.setPrefix(nationTag(nation).append(Text.literal(" ")));
+        team.setPrefix(nationTag(nation).append(Component.literal(" ")));
         team.setColor(ColorUtils.nearestFormatting(nation.getRgb()));
         return team;
     }
@@ -85,42 +85,42 @@ public final class NationTeams {
     /** Removes a nation's team (used when a nation is disbanded). */
     public static void removeTeam(MinecraftServer server, Nation nation) {
         Scoreboard scoreboard = server.getScoreboard();
-        Team team = scoreboard.getTeam(nation.getTeamId());
+        PlayerTeam team = scoreboard.getPlayerTeam(nation.getTeamId());
         if (team != null) {
-            scoreboard.removeTeam(team);
+            scoreboard.removePlayerTeam(team);
         }
     }
 
     /** The {@code [Name]} tag styled in the nation color. */
-    public static Text nationTag(Nation nation) {
-        return Text.literal("[")
-                .formatted(Formatting.DARK_GRAY)
+    public static Component nationTag(Nation nation) {
+        return Component.literal("[")
+                .withStyle(ChatFormatting.DARK_GRAY)
                 .append(ColorUtils.colored(nation.getName(), nation.getRgb()))
-                .append(Text.literal("]").formatted(Formatting.DARK_GRAY));
+                .append(Component.literal("]").withStyle(ChatFormatting.DARK_GRAY));
     }
 
     /**
      * Puts a player into the right nation team and removes them from any
      * stale nation team. Called on join and whenever membership changes.
      */
-    public static void applyToPlayer(MinecraftServer server, ServerPlayerEntity player) {
+    public static void applyToPlayer(MinecraftServer server, ServerPlayer player) {
         Scoreboard scoreboard = server.getScoreboard();
         String playerName = player.getName().getString();
 
-        Nation nation = NationManager.get().nationOf(player.getUuid());
-        Team desired = nation == null ? null : ensureTeam(server, nation);
+        Nation nation = NationManager.get().nationOf(player.getUUID());
+        PlayerTeam desired = nation == null ? null : ensureTeam(server, nation);
 
-        Team current = scoreboard.getScoreHolderTeam(playerName);
+        PlayerTeam current = scoreboard.getPlayersTeam(playerName);
         if (current != null && current.getName().startsWith(ID_PREFIX) && current != desired) {
-            scoreboard.removeScoreHolderFromTeam(playerName, current);
+            scoreboard.removePlayerFromTeam(playerName, current);
         }
         if (desired != null) {
-            scoreboard.addScoreHolderToTeam(playerName, desired);
+            scoreboard.addPlayerToTeam(playerName, desired);
         }
     }
 
     /** Prefix for chat messages. */
-    public static Text chatPrefix(Nation nation) {
-        return nationTag(nation).append(Text.literal(" "));
+    public static Component chatPrefix(Nation nation) {
+        return nationTag(nation).append(Component.literal(" "));
     }
 }

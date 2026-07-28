@@ -1,13 +1,13 @@
 package com.nationeconomy.nation;
 
 import com.nationeconomy.util.ColorUtils;
-import net.minecraft.network.packet.s2c.play.SubtitleS2CPacket;
-import net.minecraft.network.packet.s2c.play.TitleFadeS2CPacket;
-import net.minecraft.network.packet.s2c.play.TitleS2CPacket;
+import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
+import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
+import net.minecraft.ChatFormatting;
 
 import java.util.Map;
 import java.util.UUID;
@@ -35,41 +35,41 @@ public final class BorderNotifier {
 
     public static void tick(MinecraftServer server) {
         // Only check every 4 ticks to keep the cost negligible.
-        if (server.getTicks() % 4 != 0) {
+        if (server.getTickCount() % 4 != 0) {
             return;
         }
         NationManager manager = NationManager.get();
-        for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-            String worldId = player.getWorld().getRegistryKey().getValue().toString();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            String worldId = player.level().dimension().location().toString();
             Nation nation = manager.claimAt(worldId, player.getBlockPos().getX(), player.getBlockPos().getZ());
             String current = nation == null ? WILDERNESS : nation.getKey();
 
-            String last = LAST_SEEN.put(player.getUuid(), current);
+            String last = LAST_SEEN.put(player.getUUID(), current);
             if (current.equals(last)) {
                 continue;
             }
             if (nation == null) {
                 if (last != null) {
-                    player.sendMessage(Text.literal("» Wilderness").formatted(Formatting.DARK_GRAY), true);
+                    player.sendSystemMessage(Component.literal("» Wilderness").withStyle(ChatFormatting.DARK_GRAY), true);
                 }
                 continue;
             }
 
-            if (nation.isMember(player.getUuid())) {
-                player.sendMessage(Text.literal("» ").formatted(Formatting.GRAY)
+            if (nation.isMember(player.getUUID())) {
+                player.sendSystemMessage(Component.literal("» ").withStyle(ChatFormatting.GRAY)
                         .append(ColorUtils.colored(nation.getName(), nation.getRgb()))
-                        .append(Text.literal(" (your nation)").formatted(Formatting.GREEN)), true);
+                        .append(Component.literal(" (your nation)").withStyle(ChatFormatting.GREEN)), true);
             } else {
                 // Big banner for foreign land: name in nation color + claimed size.
-                player.networkHandler.sendPacket(new TitleFadeS2CPacket(5, 40, 10));
-                player.networkHandler.sendPacket(new SubtitleS2CPacket(
-                        Text.literal(nation.claimedBlocks() + " blocks claimed")
-                                .formatted(Formatting.GRAY)));
-                player.networkHandler.sendPacket(new TitleS2CPacket(
+                player.connection.send(new ClientboundSetTitlesAnimationPacket(5, 40, 10));
+                player.connection.send(new ClientboundSetSubtitleTextPacket(
+                        Component.literal(nation.claimedBlocks() + " blocks claimed")
+                                .withStyle(ChatFormatting.GRAY)));
+                player.connection.send(new ClientboundSetTitleTextPacket(
                         ColorUtils.colored(nation.getName(), nation.getRgb())));
-                player.sendMessage(Text.literal("» Entering ").formatted(Formatting.GRAY)
+                player.sendSystemMessage(Component.literal("» Entering ").withStyle(ChatFormatting.GRAY)
                         .append(ColorUtils.colored(nation.getName(), nation.getRgb()))
-                        .append(Text.literal(" — protected land").formatted(Formatting.RED)), true);
+                        .append(Component.literal(" — protected land").withStyle(ChatFormatting.RED)), true);
             }
         }
     }

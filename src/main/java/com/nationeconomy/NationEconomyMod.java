@@ -20,8 +20,8 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.WorldSavePath;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,7 +76,7 @@ public class NationEconomyMod implements DedicatedServerModInitializer {
 
         // ------------------------------------------------------- data files
         ServerLifecycleEvents.SERVER_STARTING.register(server -> {
-            dataDir = server.getSavePath(WorldSavePath.ROOT).resolve(MOD_ID);
+            dataDir = server.getWorldPath(new LevelResource(MOD_ID));
             try {
                 Files.createDirectories(dataDir);
             } catch (IOException e) {
@@ -95,19 +95,19 @@ public class NationEconomyMod implements DedicatedServerModInitializer {
 
         // --------------------------------------------------------- players
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            ServerPlayerEntity player = handler.getPlayer();
+            ServerPlayer player = handler.player;
             KnownPlayers.track(player);
-            EconomyManager.get().ensureAccount(player.getUuid());
+            EconomyManager.get().ensureAccount(player.getUUID());
             NationTeams.applyToPlayer(server, player);
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
-                BorderNotifier.forget(handler.getPlayer().getUuid()));
+                BorderNotifier.forget(handler.player.getUUID()));
 
         // ------------------------------------------------------------ tick
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             BorderNotifier.tick(server);
             CoreManager.tick(server);
-            if (server.getTicks() % AUTOSAVE_INTERVAL == 0) {
+            if (server.getTickCount() % AUTOSAVE_INTERVAL == 0) {
                 saveDirty();
             }
         });

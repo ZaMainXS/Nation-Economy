@@ -1,7 +1,7 @@
 package com.nationeconomy.nation;
 
 import com.nationeconomy.util.JsonFiles;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.core.BlockPos;
 
 import java.nio.file.Path;
 import java.util.HashMap;
