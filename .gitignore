@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+out/
+run/
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+bin/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Fabric Loom artifacts
+src/main/generated/

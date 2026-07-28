@@ -1,0 +1,51 @@
+plugins {
+    id 'fabric-loom' version '1.13.20'
+    id 'java'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    maven {
+        name = 'Fabric'
+        url = 'https://maven.fabricmc.net/'
+    }
+    mavenCentral()
+}
+
+dependencies {
+    // Minecraft itself
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    // Yarn mappings (still officially supported for 1.21.11)
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    // Fabric Loader
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    // Fabric API
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+}
+
+processResources {
+    // Keep fabric.mod.json static; nothing to expand right now.
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = "UTF-8"
+    it.options.release = 21
+}
+
+java {
+    // Minecraft 1.21.11 requires Java 21.
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    withSourcesJar()
+}
+
+jar {
+    inputs.property "archivesName", project.base.archivesName
+}

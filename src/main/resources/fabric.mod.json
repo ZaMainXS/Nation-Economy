@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "nationeconomy",
+  "version": "1.0.0",
+  "name": "Nation & Economy",
+  "description": "A server-side economy shop (like EconomyShopGUI, but prettier and fully configurable in game) combined with a nations, land-claim and territory system for Fabric servers. Runs on the server only — vanilla clients can connect.",
+  "authors": [
+    "Nation-Economy Team"
+  ],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/nationeconomy/icon.png",
+  "environment": "server",
+  "entrypoints": {
+    "server": [
+      "com.nationeconomy.NationEconomyMod"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
