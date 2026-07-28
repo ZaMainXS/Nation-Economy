@@ -94,7 +94,7 @@ public final class ShopCommands {
                                             .then(CommandManager.argument("category", StringArgumentType.word())
                                                     .suggests(ShopCommands::suggestCategories)
                                                     .executes(ctx -> handItemAdd(ctx,
-                                                            StringArgumentType.getString(ctx, "category")))))))));
+                                                            StringArgumentType.getString(ctx, "category"))))))))));
         }
 
         // /sreload [confirm]
