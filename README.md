@@ -160,6 +160,19 @@ Fabric API itself for this version. (Older chat logs may mention Yarn — that w
 Yarn's 1.21.11 mappings have large gaps such as unmapped registry constants, while official
 mappings are complete.)
 
+Every vanilla API call in the codebase has been cross-checked against the actual
+`0.141.6+1.21.11` Fabric API and NeoForge `1.21.11` sources (both compile against vanilla
+1.21.11). Notable 1.21.x API shifts this code accounts for:
+
+* `ResourceLocation` is now `Identifier` (`fromNamespaceAndPath` / `tryParse`).
+* Permission levels are objects: commands use `Commands.hasPermission(Commands.LEVEL_GAMEMASTERS)`,
+  player checks use `Commands.LEVEL_ADMINS.check(player.permissions())`
+  (`MinecraftServer#getProfilePermissions` now takes a `NameAndId` and returns a
+  `LevelBasedPermissionSet`, not an int).
+* `LivingEntity#hurt` is `(DamageSource, float)`; teleports use
+  `new TeleportTransition(world, pos, Vec3.ZERO, yaw, pitch, TeleportTransition.DO_NOTHING)`.
+* `authlib`'s `GameProfile` is a record (`name()` / `id()`).
+
 ## How it works (for developers)
 
 * **Server-side only** (`DedicatedServerModInitializer`) — no mixins, no client classes.
