@@ -10,6 +10,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -120,7 +121,7 @@ public final class CoreManager {
         if (id == null) {
             return null;
         }
-        return server.getWorld(ResourceKey.create(Registries.DIMENSION, id));
+        return server.getLevel(ResourceKey.create(Registries.DIMENSION, id));
     }
 
     // ------------------------------------------------------------- lookups
