@@ -76,7 +76,7 @@ public class NationEconomyMod implements DedicatedServerModInitializer {
 
         // ------------------------------------------------------- data files
         ServerLifecycleEvents.SERVER_STARTING.register(server -> {
-            dataDir = server.getWorldPath(new LevelResource(MOD_ID));
+            dataDir = server.getWorldPath(LevelResource.ROOT).resolve(MOD_ID);
             try {
                 Files.createDirectories(dataDir);
             } catch (IOException e) {
