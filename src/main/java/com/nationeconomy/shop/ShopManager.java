@@ -43,12 +43,21 @@ public final class ShopManager {
     public void load(Path dir) {
         file = dir.resolve("shop.json");
         categories.clear();
+        boolean fileExisted = java.nio.file.Files.isRegularFile(file);
         Data data = JsonFiles.read(file, Data.class);
         if (data != null && data.categories != null && !data.categories.isEmpty()) {
             data.categories.forEach((id, category) -> {
                 category.setId(id);
                 categories.put(id, category);
             });
+        } else if (fileExisted) {
+            // The file exists but could not be parsed (or is empty). NEVER
+            // overwrite a broken hand-edited shop.json with defaults — an
+            // admin typo would otherwise wipe the whole shop. Keep the shop
+            // empty, log loudly, and let /sreload try again after the fix.
+            NationEconomyMod.LOGGER.error(
+                    "{} exists but could not be loaded — shop stays empty until the JSON is fixed (nothing was overwritten).",
+                    file);
         } else {
             createDefaults();
             save();
