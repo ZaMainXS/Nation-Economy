@@ -21,7 +21,8 @@ public final class GuiElements {
     public static ItemStack filler() {
         ItemStack stack = new ItemStack(Items.BLACK_STAINED_GLASS_PANE);
         stack.set(DataComponents.CUSTOM_NAME, Component.literal(" "));
-        stack.set(DataComponents.TOOLTIP_DISPLAY, new TooltipDisplay(true, java.util.Set.of()));
+        stack.set(DataComponents.TOOLTIP_DISPLAY,
+                new TooltipDisplay(true, new java.util.LinkedHashSet<>()));
         return stack;
     }
 
