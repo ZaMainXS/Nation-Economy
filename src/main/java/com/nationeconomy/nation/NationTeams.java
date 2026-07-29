@@ -78,7 +78,7 @@ public final class NationTeams {
             nation.setTeamId(teamId);
             team = scoreboard.addPlayerTeam(teamId);
         }
-        team.setPrefix(nationTag(nation).append(Component.literal(" ")));
+        team.setPlayerPrefix(nationTag(nation).append(Component.literal(" ")));
         team.setColor(ColorUtils.nearestFormatting(nation.getRgb()));
         return team;
     }

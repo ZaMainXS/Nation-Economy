@@ -52,7 +52,7 @@ public final class CombatManager {
         // Tag both players on PvP damage (melee, arrows, anything).
         ServerLivingEntityEvents.ALLOW_DAMAGE.register((entity, source, amount) -> {
             if (entity instanceof ServerPlayer victim
-                    && source.getAttacker() instanceof ServerPlayer attacker
+                    && source.getEntity() instanceof ServerPlayer attacker
                     && !attacker.getUUID().equals(victim.getUUID())) {
                 tag(attacker);
                 tag(victim);

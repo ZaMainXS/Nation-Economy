@@ -279,7 +279,7 @@ public class ShopCategoryMenu extends ChestMenu {
                 .append(item.getDescription().copy().withStyle(ChatFormatting.AQUA))
                 .append(Component.literal(" for ").withStyle(ChatFormatting.GRAY))
                 .append(Component.literal(MoneyUtil.format(cost)).withStyle(ChatFormatting.GOLD)), false);
-        player.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 0.6f, 1.2f);
+        player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 0.6f, 1.2f);
     }
 
     private static void clickSound(ServerPlayer player) {
@@ -288,7 +288,7 @@ public class ShopCategoryMenu extends ChestMenu {
 
     private static void error(ServerPlayer player, String message) {
         player.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.RED), false);
-        player.playSound(SoundEvents.ENTITY_VILLAGER_NO, 0.7f, 1.0f);
+        player.playSound(SoundEvents.VILLAGER_NO, 0.7f, 1.0f);
     }
 
     @Override

@@ -206,7 +206,7 @@ public final class NationCommands {
 
         // The nation core spawns where you stand — guard it with your life.
         ServerLevel world = (ServerLevel) player.level();
-        CoreManager.createCore(world, nation, player.getBlockPos());
+        CoreManager.createCore(world, nation, player.blockPosition());
         manager.save();
 
         player.sendSystemMessage(Component.literal("You founded the nation ").withStyle(ChatFormatting.GREEN)
@@ -580,7 +580,7 @@ public final class NationCommands {
         player.sendSystemMessage(Component.literal("Welcome home ").withStyle(ChatFormatting.GREEN)
                 .append(ColorUtils.colored(nation.getName(), nation.getRgb()))
                 .append(Component.literal(" member! (home " + (slot + 1) + ")").withStyle(ChatFormatting.GRAY)), false);
-        player.playSound(SoundEvents.ENTITY_ENDERMAN_TELEPORT, 1.0f, 1.0f);
+        player.playSound(SoundEvents.ENDERMAN_TELEPORT, 1.0f, 1.0f);
         return 1;
     }
 
@@ -774,7 +774,7 @@ public final class NationCommands {
             return 0;
         }
         String worldId = player.level().dimension().location().toString();
-        BlockPos pos = player.getBlockPos();
+        BlockPos pos = player.blockPosition();
         Claim claim = nation.claimAt(worldId, pos.getX(), pos.getZ());
         if (claim == null) {
             ctx.getSource().sendFailure(Component.literal("You are not standing inside your nation's land."));

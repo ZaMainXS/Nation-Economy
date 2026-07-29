@@ -261,7 +261,7 @@ public class CategoryAdminGui extends ChestMenu {
 
     private static void error(ServerPlayer player, String message) {
         player.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.RED), false);
-        player.playSound(SoundEvents.ENTITY_VILLAGER_NO, 0.7f, 1.0f);
+        player.playSound(SoundEvents.VILLAGER_NO, 0.7f, 1.0f);
     }
 
     @Override

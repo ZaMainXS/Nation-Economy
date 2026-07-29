@@ -239,7 +239,7 @@ public final class ClaimProtection {
             BlockHitResult hit = world.clip(new ClipContext(start, end,
                     ClipContext.Block.OUTLINE, ClipContext.Fluid.ANY, player));
             if (hit.getType() == BlockHitResult.Type.BLOCK) {
-                BlockPos target = hit.getBlockPos().relative(hit.getSide());
+                BlockPos target = hit.getBlockPos().relative(hit.getDirection());
                 if (!allowed(serverPlayer, world, target, NationPermission.PLACE)) {
                     deny(serverPlayer, world, target);
                     return InteractionResult.FAIL;
@@ -260,10 +260,10 @@ public final class ClaimProtection {
         if (CoreManager.handleUse(serverPlayer, entity, hand)) {
             return InteractionResult.FAIL;
         }
-        if (allowed(serverPlayer, world, entity.getBlockPos(), NationPermission.USE)) {
+        if (allowed(serverPlayer, world, entity.blockPosition(), NationPermission.USE)) {
             return InteractionResult.PASS;
         }
-        deny(serverPlayer, world, entity.getBlockPos());
+        deny(serverPlayer, world, entity.blockPosition());
         return InteractionResult.FAIL;
     }
 
@@ -276,10 +276,10 @@ public final class ClaimProtection {
         if (CoreManager.handleAttack(serverPlayer, entity)) {
             return InteractionResult.FAIL;
         }
-        if (allowed(serverPlayer, world, entity.getBlockPos(), NationPermission.USE)) {
+        if (allowed(serverPlayer, world, entity.blockPosition(), NationPermission.USE)) {
             return InteractionResult.PASS;
         }
-        deny(serverPlayer, world, entity.getBlockPos());
+        deny(serverPlayer, world, entity.blockPosition());
         return InteractionResult.FAIL;
     }
 

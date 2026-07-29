@@ -41,7 +41,7 @@ public final class BorderNotifier {
         NationManager manager = NationManager.get();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             String worldId = player.level().dimension().location().toString();
-            Nation nation = manager.claimAt(worldId, player.getBlockPos().getX(), player.getBlockPos().getZ());
+            Nation nation = manager.claimAt(worldId, player.blockPosition().getX(), player.blockPosition().getZ());
             String current = nation == null ? WILDERNESS : nation.getKey();
 
             String last = LAST_SEEN.put(player.getUUID(), current);

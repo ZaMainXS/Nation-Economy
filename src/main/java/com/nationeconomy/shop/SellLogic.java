@@ -96,7 +96,7 @@ public final class SellLogic {
                 .append(Component.literal(MoneyUtil.format(total)).withStyle(ChatFormatting.GOLD))
                 .append(Component.literal("   ").append(ColorUtils.formatted("(balance: " + MoneyUtil.format(
                         EconomyManager.get().balance(player.getUUID())) + ")", ChatFormatting.DARK_GRAY))), false);
-        player.playSound(SoundEvents.ENTITY_EXPERIENCE_ORB_PICKUP, 0.6f, 1.2f);
+        player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 0.6f, 1.2f);
     }
 
     /** Sells the stack the player is currently holding. */
