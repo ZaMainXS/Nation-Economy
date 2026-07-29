@@ -1,5 +1,5 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version '1.17-SNAPSHOT'
+    id 'fabric-loom' version '1.13.3'
     id 'java'
 }
 
@@ -19,11 +19,13 @@ repositories {
 }
 
 dependencies {
-    // Minecraft itself (1.21.11 era: unobfuscated, Mojang names are native)
+    // Minecraft itself
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    // Fabric Loader & API as plain dependencies (Loom 1.17 pipeline: no remapping needed)
-    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    // Mojang official mappings (what Fabric API 0.141.6 builds against for 1.21.11)
+    mappings loom.officialMojangMappings()
+    // Fabric Loader & API (Loom 1.13 remaps intermediary artifacts to the Mojmap env)
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 }
 
 processResources {
