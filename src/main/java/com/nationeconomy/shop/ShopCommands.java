@@ -80,7 +80,7 @@ public final class ShopCommands {
                     .then(Commands.literal("delete")
                             .then(Commands.argument("category", StringArgumentType.word())
                                     .suggests(ShopCommands::suggestCategories)
-                                    .executes(ShopCommands::categoryDelete)));
+                                    .executes(ShopCommands::categoryDelete))));
         }
 
         // /economyhanditem add <buy> <sell> [category]
@@ -94,7 +94,7 @@ public final class ShopCommands {
                                             .then(Commands.argument("category", StringArgumentType.word())
                                                     .suggests(ShopCommands::suggestCategories)
                                                     .executes(ctx -> handItemAdd(ctx,
-                                                            StringArgumentType.getString(ctx, "category")))))))));
+                                                            StringArgumentType.getString(ctx, "category"))))))));
         }
 
         // /sreload [confirm]
@@ -282,7 +282,7 @@ public final class ShopCommands {
                 ShopManager.get().categories().stream().map(ShopCategory::getId).toList(), builder);
     }
 
-    private static int categoryCreate(CommandContext<CommandSourceStack> ctx) {
+    private static int categoryCreate(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         CommandSourceStack source = ctx.getSource();
         int slot = IntegerArgumentType.getInteger(ctx, "slot");
         Item icon = ItemArgument.getItem(ctx, "icon").createItemStack(1, false).getItem();
@@ -331,7 +331,7 @@ public final class ShopCommands {
         return 1;
     }
 
-    private static int itemAdd(CommandContext<CommandSourceStack> ctx) {
+    private static int itemAdd(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         CommandSourceStack source = ctx.getSource();
         String categoryId = StringArgumentType.getString(ctx, "category").toLowerCase(Locale.ROOT);
         Item item = ItemArgument.getItem(ctx, "item").createItemStack(1, false).getItem();
@@ -355,7 +355,7 @@ public final class ShopCommands {
         return 1;
     }
 
-    private static int itemRemove(CommandContext<CommandSourceStack> ctx) {
+    private static int itemRemove(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
         CommandSourceStack source = ctx.getSource();
         String categoryId = StringArgumentType.getString(ctx, "category").toLowerCase(Locale.ROOT);
         Item item = ItemArgument.getItem(ctx, "item").createItemStack(1, false).getItem();

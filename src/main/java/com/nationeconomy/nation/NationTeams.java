@@ -6,6 +6,7 @@ import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.ChatFormatting;
 
@@ -92,7 +93,7 @@ public final class NationTeams {
     }
 
     /** The {@code [Name]} tag styled in the nation color. */
-    public static Component nationTag(Nation nation) {
+    public static MutableComponent nationTag(Nation nation) {
         return Component.literal("[")
                 .withStyle(ChatFormatting.DARK_GRAY)
                 .append(ColorUtils.colored(nation.getName(), nation.getRgb()))

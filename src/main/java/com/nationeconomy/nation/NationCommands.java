@@ -509,7 +509,7 @@ public final class NationCommands {
 
     private static Nation.Home currentHome(ServerPlayer player) {
         return new Nation.Home(player.level().dimension().location().toString(),
-                player.getX(), player.getY(), player.getZ(), player.getYaw(), player.getPitch());
+                player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
     }
 
     private static int setHome(CommandContext<CommandSourceStack> ctx, int slot) throws CommandSyntaxException {
