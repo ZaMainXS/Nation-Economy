@@ -19,15 +19,11 @@ repositories {
 }
 
 dependencies {
-    // Minecraft itself
+    // Minecraft itself (1.21.11 era: unobfuscated, Mojang names are native)
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    // Mojang official mappings — the standard mapping set for 1.21.11 modding
-    // (what Fabric's example mod and Fabric API itself use for this version)
-    mappings loom.officialMojangMappings()
-    // Fabric Loader
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    // Fabric API
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    // Fabric Loader & API as plain dependencies (Loom 1.17 pipeline: no remapping needed)
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:${project.fabric_version}"
 }
 
 processResources {
