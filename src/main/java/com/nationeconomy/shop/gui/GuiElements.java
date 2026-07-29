@@ -2,6 +2,7 @@ package com.nationeconomy.shop.gui;
 
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.component.ItemLore;
+import net.minecraft.world.item.component.TooltipDisplay;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.network.chat.Style;
@@ -20,7 +21,7 @@ public final class GuiElements {
     public static ItemStack filler() {
         ItemStack stack = new ItemStack(Items.BLACK_STAINED_GLASS_PANE);
         stack.set(DataComponents.CUSTOM_NAME, Component.literal(" "));
-        stack.set(DataComponents.HIDE_TOOLTIP, Unit.INSTANCE);
+        stack.set(DataComponents.TOOLTIP_DISPLAY, new TooltipDisplay(true, java.util.Set.of()));
         return stack;
     }
 

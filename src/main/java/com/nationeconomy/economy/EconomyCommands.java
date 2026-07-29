@@ -10,7 +10,7 @@ import com.nationeconomy.util.ColorUtils;
 import com.nationeconomy.util.KnownPlayers;
 import com.nationeconomy.util.MoneyUtil;
 import net.minecraft.commands.CommandBuildContext;
-import net.minecraft.commands.SharedSuggestionProvider;
+import com.nationeconomy.util.SuggestUtil;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerPlayer;
@@ -45,7 +45,7 @@ public final class EconomyCommands {
         // /pay <player> <amount>
         dispatcher.register(Commands.literal("pay")
                 .then(Commands.argument("player", StringArgumentType.word())
-                        .suggests((ctx, builder) -> SharedSuggestionProvider.suggestMatching(KnownPlayers.names(), builder))
+                        .suggests((ctx, builder) -> SuggestUtil.suggestMatching(KnownPlayers.names(), builder))
                         .then(Commands.argument("amount", DoubleArgumentType.doubleArg(0.01))
                                 .executes(EconomyCommands::pay))));
 
@@ -68,7 +68,7 @@ public final class EconomyCommands {
 
     private static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, String> playerArg() {
         return Commands.argument("player", StringArgumentType.word())
-                .suggests((ctx, builder) -> SharedSuggestionProvider.suggestMatching(KnownPlayers.names(), builder));
+                .suggests((ctx, builder) -> SuggestUtil.suggestMatching(KnownPlayers.names(), builder));
     }
 
     private static com.mojang.brigadier.builder.RequiredArgumentBuilder<CommandSourceStack, Double> amountArg() {

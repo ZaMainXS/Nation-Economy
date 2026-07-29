@@ -13,7 +13,7 @@ import com.nationeconomy.NationEconomyMod;
 import com.nationeconomy.shop.admin.ShopAdminMainGui;
 import com.nationeconomy.shop.gui.ShopMainMenu;
 import net.minecraft.commands.CommandBuildContext;
-import net.minecraft.commands.SharedSuggestionProvider;
+import com.nationeconomy.util.SuggestUtil;
 import net.minecraft.commands.arguments.item.ItemArgument;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -136,9 +136,9 @@ public final class ShopCommands {
         if (sold == 0) {
             ShopItem shopItem = ShopManager.get().findSellable(id);
             if (shopItem == null || !shopItem.isSellable()) {
-                ctx.getSource().sendFailure(Component.literal(item.getDescription().getString() + " cannot be sold to the shop."));
+                ctx.getSource().sendFailure(Component.translatable(item.getDescriptionId()).withStyle(ChatFormatting.AQUA).append(Component.literal(" cannot be sold to the shop.")));
             } else {
-                ctx.getSource().sendFailure(Component.literal("You don't have any " + item.getDescription().getString() + " to sell."));
+                ctx.getSource().sendFailure(Component.literal("You don't have any ").append(Component.translatable(item.getDescriptionId()).withStyle(ChatFormatting.AQUA)).append(Component.literal(" to sell.")));
             }
         }
         return sold > 0 ? 1 : 0;
@@ -225,7 +225,7 @@ public final class ShopCommands {
         ShopAdminMainGui.refreshShops();
         ShopItem finalItem = category.getItems().get(itemId);
         ctx.getSource().sendSuccess(() -> Component.literal("Added ")
-                .append(held.getItem().getDescription().copy().withStyle(ChatFormatting.AQUA))
+                .append(Component.translatable(held.getItem().getDescriptionId()).withStyle(ChatFormatting.AQUA))
                 .append(Component.literal(" to '" + id + "' (buy " + finalItem.getBuy()
                         + ", sell " + finalItem.getSell() + ").")), true);
         return 1;
@@ -278,7 +278,7 @@ public final class ShopCommands {
 
     private static CompletableFuture<Suggestions> suggestCategories(
             CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder) {
-        return SharedSuggestionProvider.suggestMatching(
+        return SuggestUtil.suggestMatching(
                 ShopManager.get().categories().stream().map(ShopCategory::getId).toList(), builder);
     }
 
@@ -350,7 +350,7 @@ public final class ShopCommands {
         manager.save();
         ShopAdminMainGui.refreshShops();
         source.sendSuccess(() -> Component.literal("Added ")
-                .append(item.getDescription().copy().withStyle(ChatFormatting.AQUA))
+                .append(Component.translatable(item.getDescriptionId()).withStyle(ChatFormatting.AQUA))
                 .append(Component.literal(" to '" + categoryId + "' (buy " + buy + ", sell " + sell + ").")), true);
         return 1;
     }
@@ -370,7 +370,7 @@ public final class ShopCommands {
         manager.save();
         ShopAdminMainGui.refreshShops();
         source.sendSuccess(() -> Component.literal("Removed ")
-                .append(item.getDescription().copy().withStyle(ChatFormatting.AQUA))
+                .append(Component.translatable(item.getDescriptionId()).withStyle(ChatFormatting.AQUA))
                 .append(Component.literal(" from '" + categoryId + "'.")), true);
         return 1;
     }

@@ -97,7 +97,7 @@ public class CategoryAdminGui extends ChestMenu {
             String itemId = itemIds.get(start + slot);
             ShopItem shopItem = category.getItems().get(itemId);
             ItemStack display = new ItemStack(ShopManager.itemOf(itemId));
-            GuiElements.name(display, Component.literal(ShopManager.itemOf(itemId).getDescription().getString())
+            GuiElements.name(display, Component.translatable(ShopManager.itemOf(itemId).getDescriptionId())
                     .withStyle(ChatFormatting.YELLOW));
             GuiElements.lore(display, List.of(
                     Component.literal("Buy: " + (shopItem.isBuyable() ? MoneyUtil.format(shopItem.getBuy()) : "—"))

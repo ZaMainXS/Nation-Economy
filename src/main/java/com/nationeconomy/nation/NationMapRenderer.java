@@ -31,7 +31,7 @@ public final class NationMapRenderer {
 
     public static void render(ServerPlayer player, int radius) {
         radius = Math.max(1, Math.min(MAX_RADIUS, radius));
-        String worldId = player.level().dimension().location().toString();
+        String worldId = player.level().dimension().identifier().toString();
         ChunkPos center = player.chunkPosition();
         NationManager manager = NationManager.get();
 

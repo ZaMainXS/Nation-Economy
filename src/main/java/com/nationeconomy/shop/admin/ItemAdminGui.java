@@ -88,7 +88,7 @@ public class ItemAdminGui extends ChestMenu {
         int position = new java.util.ArrayList<>(category.getItems().keySet()).indexOf(itemId);
 
         ItemStack display = new ItemStack(ShopManager.itemOf(itemId));
-        GuiElements.name(display, Component.literal(ShopManager.itemOf(itemId).getDescription().getString())
+        GuiElements.name(display, Component.translatable(ShopManager.itemOf(itemId).getDescriptionId())
                 .withStyle(ChatFormatting.YELLOW));
         GuiElements.lore(display, List.of(
                 Component.literal(itemId).withStyle(ChatFormatting.DARK_GRAY),

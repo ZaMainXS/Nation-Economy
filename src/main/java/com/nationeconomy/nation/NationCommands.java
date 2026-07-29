@@ -12,7 +12,7 @@ import com.nationeconomy.combat.CombatManager;
 import com.nationeconomy.util.ColorUtils;
 import com.nationeconomy.util.KnownPlayers;
 import net.minecraft.commands.CommandBuildContext;
-import net.minecraft.commands.SharedSuggestionProvider;
+import com.nationeconomy.util.SuggestUtil;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.resources.ResourceKey;
@@ -91,7 +91,7 @@ public final class NationCommands {
         nation.then(Commands.literal("trusted").executes(NationCommands::trusted));
         nation.then(Commands.literal("color")
                 .then(Commands.argument("color", StringArgumentType.word())
-                        .suggests((ctx, builder) -> SharedSuggestionProvider.suggestMatching(ColorUtils.namedColors().keySet(), builder))
+                        .suggests((ctx, builder) -> SuggestUtil.suggestMatching(ColorUtils.namedColors().keySet(), builder))
                         .executes(NationCommands::color)));
         nation.then(Commands.literal("colors").executes(NationCommands::colors));
         nation.then(Commands.literal("sethome")
@@ -136,17 +136,17 @@ public final class NationCommands {
                                                                  SuggestionsBuilder builder) {
         java.util.List<String> names = new java.util.ArrayList<>();
         NationManager.get().nations().forEach(n -> names.add(n.getName()));
-        return SharedSuggestionProvider.suggestMatching(names, builder);
+        return SuggestUtil.suggestMatching(names, builder);
     }
 
     private static CompletableFuture<Suggestions> suggestPlayers(CommandContext<CommandSourceStack> ctx,
                                                                  SuggestionsBuilder builder) {
-        return SharedSuggestionProvider.suggestMatching(KnownPlayers.names(), builder);
+        return SuggestUtil.suggestMatching(KnownPlayers.names(), builder);
     }
 
     private static CompletableFuture<Suggestions> suggestPermissions(CommandContext<CommandSourceStack> ctx,
                                                                      SuggestionsBuilder builder) {
-        return SharedSuggestionProvider.suggestMatching(
+        return SuggestUtil.suggestMatching(
                 List.of("break", "place", "chest", "use", "all"), builder);
     }
 
@@ -511,7 +511,7 @@ public final class NationCommands {
     // ----------------------------------------------------------------- homes
 
     private static Nation.Home currentHome(ServerPlayer player) {
-        return new Nation.Home(player.level().dimension().location().toString(),
+        return new Nation.Home(player.level().dimension().identifier().toString(),
                 player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot());
     }
 
@@ -776,7 +776,7 @@ public final class NationCommands {
             ctx.getSource().sendFailure(Component.literal("Only the nation leader can unclaim land."));
             return 0;
         }
-        String worldId = player.level().dimension().location().toString();
+        String worldId = player.level().dimension().identifier().toString();
         BlockPos pos = player.blockPosition();
         Claim claim = nation.claimAt(worldId, pos.getX(), pos.getZ());
         if (claim == null) {
@@ -827,7 +827,7 @@ public final class NationCommands {
             ctx.getSource().sendFailure(Component.literal("Select both corners first (left & right click with the claim shovel)."));
             return 0;
         }
-        String worldId = player.level().dimension().location().toString();
+        String worldId = player.level().dimension().identifier().toString();
         if (!worldId.equals(selection.worldId)) {
             ctx.getSource().sendFailure(Component.literal("Your selection is in a different world. Select new corners here."));
             return 0;

@@ -59,7 +59,6 @@ public final class CoreManager {
         stand.setInvulnerable(true);
         stand.setSilent(true);
         stand.setNoGravity(true);
-        stand.setSmall(true);
         stand.setNoBasePlate(true);
         stand.setGlowingTag(true);
         stand.setItemSlot(EquipmentSlot.HEAD, CoreItems.coreOrb());
@@ -73,7 +72,7 @@ public final class CoreManager {
     /** (Re)creates the core of a freshly founded nation at the given position. */
     public static void createCore(ServerLevel world, Nation nation, BlockPos pos) {
         removeCore(world.getServer(), nation);
-        nation.placeCore(world.dimension().location().toString(),
+        nation.placeCore(world.dimension().identifier().toString(),
                 pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5);
         spawnCore(world, nation);
     }
@@ -154,7 +153,7 @@ public final class CoreManager {
         if (nation == null) {
             return false;
         }
-        MinecraftServer server = attacker.getServer();
+        MinecraftServer server = attacker.level().getServer();
 
         if (nation.isMember(attacker.getUUID())) {
             attacker.sendSystemMessage(Component.literal("This is your nation's core (" + nation.getCoreHits() + "/"

@@ -242,9 +242,13 @@ public class ShopCategoryMenu extends ChestMenu {
             int amount = shift ? Integer.MAX_VALUE : 1;
             int sold = SellLogic.sell(serverPlayer, shopItem.getItem(), amount);
             if (sold == 0) {
-                error(serverPlayer, shopItem.isSellable()
-                        ? "You don't have any " + ShopManager.itemOf(shopItem.getItem()).getDescription().getString() + " to sell."
-                        : "This item cannot be sold.");
+                if (shopItem.isSellable()) {
+                    error(serverPlayer, Component.literal("You don't have any ")
+                            .append(Component.translatable(ShopManager.itemOf(shopItem.getItem()).getDescriptionId()))
+                            .append(Component.literal(" to sell.")));
+                } else {
+                    error(serverPlayer, Component.literal("This item cannot be sold."));
+                }
             }
         }
     }
@@ -276,7 +280,7 @@ public class ShopCategoryMenu extends ChestMenu {
         }
         player.sendSystemMessage(Component.literal("Bought ").withStyle(ChatFormatting.GRAY)
                 .append(Component.literal(amount + "x ").withStyle(ChatFormatting.AQUA))
-                .append(item.getDescription().copy().withStyle(ChatFormatting.AQUA))
+                .append(Component.translatable(item.getDescriptionId()).withStyle(ChatFormatting.AQUA))
                 .append(Component.literal(" for ").withStyle(ChatFormatting.GRAY))
                 .append(Component.literal(MoneyUtil.format(cost)).withStyle(ChatFormatting.GOLD)), false);
         player.playSound(SoundEvents.EXPERIENCE_ORB_PICKUP, 0.6f, 1.2f);
@@ -287,7 +291,11 @@ public class ShopCategoryMenu extends ChestMenu {
     }
 
     private static void error(ServerPlayer player, String message) {
-        player.sendSystemMessage(Component.literal(message).withStyle(ChatFormatting.RED), false);
+        error(player, Component.literal(message));
+    }
+
+    private static void error(ServerPlayer player, Component message) {
+        player.sendSystemMessage(message.copy().withStyle(ChatFormatting.RED), false);
         player.playSound(SoundEvents.VILLAGER_NO, 0.7f, 1.0f);
     }
 

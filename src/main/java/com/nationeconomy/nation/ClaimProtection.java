@@ -109,7 +109,7 @@ public final class ClaimProtection {
             return InteractionResult.FAIL; // never break blocks with the tool
         }
 
-        String worldId = world.dimension().location().toString();
+        String worldId = world.dimension().identifier().toString();
         Nation nation = NationManager.get().claimAt(worldId, pos.getX(), pos.getZ());
         if (nation == null) {
             return InteractionResult.PASS; // wilderness
@@ -124,7 +124,7 @@ public final class ClaimProtection {
 
     /** Counts one raid hit against a protected block; breaks it after {@link RaidManager#RAID_HITS}. */
     private static InteractionResult raidHit(ServerPlayer player, Level world, BlockPos pos, Nation nation) {
-        String worldId = world.dimension().location().toString();
+        String worldId = world.dimension().identifier().toString();
 
         if (world.getBlockState(pos).getDestroySpeed(world, pos) < 0) {
             player.sendSystemMessage(Component.literal("This block cannot be raided.").withStyle(ChatFormatting.RED), true);
@@ -290,7 +290,7 @@ public final class ClaimProtection {
         if (isOperatorBypass(player)) {
             return true;
         }
-        String worldId = world.dimension().location().toString();
+        String worldId = world.dimension().identifier().toString();
         return NationManager.get().canDo(player.getUUID(), worldId, pos.getX(), pos.getZ(), permission);
     }
 
@@ -307,7 +307,7 @@ public final class ClaimProtection {
         }
         LAST_DENY_MESSAGE.put(player.getUUID(), now);
 
-        String worldId = world.dimension().location().toString();
+        String worldId = world.dimension().identifier().toString();
         Nation nation = NationManager.get().claimAt(worldId, pos.getX(), pos.getZ());
         Component message = nation != null
                 ? Component.literal("Protected by ").withStyle(ChatFormatting.RED)
@@ -321,7 +321,7 @@ public final class ClaimProtection {
 
     private static void selectCorner(ServerPlayer player, Level world, BlockPos pos, boolean first) {
         NationManager.Selection selection = NationManager.get().selectionOf(player.getUUID());
-        String worldId = world.dimension().location().toString();
+        String worldId = world.dimension().identifier().toString();
 
         // Changing worlds invalidates the other corner.
         if (selection.worldId != null && !selection.worldId.equals(worldId)) {
@@ -331,9 +331,9 @@ public final class ClaimProtection {
         selection.worldId = worldId;
 
         if (first) {
-            selection.cornerA = pos.toImmutable();
+            selection.cornerA = pos;
         } else {
-            selection.cornerB = pos.toImmutable();
+            selection.cornerB = pos;
         }
 
         if (world instanceof ServerLevel serverWorld) {

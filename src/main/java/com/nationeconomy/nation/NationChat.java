@@ -28,7 +28,7 @@ public final class NationChat {
             line.append(Component.literal("<" + sender.getName().getString() + "> ").withStyle(ChatFormatting.WHITE));
             line.append(Component.literal(message.decoratedContent().getString()).withStyle(ChatFormatting.WHITE));
 
-            sender.getServer().getPlayerList().broadcastSystemMessage(line, false);
+            sender.level().getServer().getPlayerList().broadcastSystemMessage(line, false);
             return false;
         });
     }
