@@ -22,7 +22,7 @@ import net.minecraft.world.level.block.CraftingTableBlock;
 import net.minecraft.world.level.block.DaylightDetectorBlock;
 import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.DragonEggBlock;
-import net.minecraft.world.level.block.EnchantmentTableBlock;
+import net.minecraft.world.level.block.EnchantingTableBlock;
 import net.minecraft.world.level.block.FenceGateBlock;
 import net.minecraft.world.level.block.FlowerPotBlock;
 import net.minecraft.world.level.block.GrindstoneBlock;
@@ -215,7 +215,7 @@ public final class ClaimProtection {
                 || block instanceof CraftingTableBlock || block instanceof AnvilBlock
                 || block instanceof StonecutterBlock || block instanceof GrindstoneBlock
                 || block instanceof CartographyTableBlock || block instanceof LoomBlock
-                || block instanceof EnchantmentTableBlock || block instanceof BellBlock
+                || block instanceof EnchantingTableBlock || block instanceof BellBlock
                 || block instanceof NoteBlock || block instanceof JukeboxBlock
                 || block instanceof BeaconBlock || block instanceof DaylightDetectorBlock
                 || block instanceof DiodeBlock || block instanceof CakeBlock
