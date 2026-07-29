@@ -48,7 +48,7 @@ Runs entirely on the server — players join with a **vanilla client**, no clien
 
 * `/nation create <name>` — found a nation; **one nation per player** until it's destroyed. Names pass a **slur/profanity filter** (n-word/hard-r included, leetspeak-normalized).
 * Creating a nation spawns the **Nation Core** where you stand: an invulnerable glowing **nether star orb** floating above the ground with the nation's name over it.
-* `/claimland` → golden shovel, left/right-click corners, `/claimland confirm`. **1,000,000 blocks (1000×1000)** base allowance; `/nation upgrade` = **1 netherite ingot → +100 blocks**. Claims can't overlap.
+* `/claimland` → golden shovel, left/right-click corners, `/claimland confirm`. **1,000,000 blocks** base allowance (each selection max **1000×1000** — split bigger areas); `/nation upgrade` = **1 netherite ingot → +100 blocks**. Claims can't overlap.
 * Protection: uninvited players can't place blocks, open chests or use anything in your land.
 * `/nation allow access <player> <break|place|chest|use|all>` & `/nation deny access`, `/nation trusted`.
 * `/nation banish <player>` (kick + ban, `/nation unbanish` lifts), `/nation leave`, `/nation members`, `/nation list`, `/nation info`.

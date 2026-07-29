@@ -44,6 +44,9 @@ public final class NationCommands {
 
     private static final String NAME_PATTERN = "[A-Za-z0-9_]{3,16}";
 
+    /** A single claim rectangle can be at most this many blocks wide/deep. */
+    private static final long MAX_CLAIM_SIDE = 1000;
+
     /** Pending disband confirmations: owner uuid -> timestamp. */
     private static final Map<UUID, Long> PENDING_DISBAND = new ConcurrentHashMap<>();
     private static final long DISBAND_CONFIRM_MILLIS = 15_000;
@@ -834,6 +837,14 @@ public final class NationCommands {
                 selection.cornerA.getX(), selection.cornerA.getZ(),
                 selection.cornerB.getX(), selection.cornerB.getZ());
 
+        long sideX = claim.getX2() - (long) claim.getX1() + 1;
+        long sideZ = claim.getZ2() - (long) claim.getZ1() + 1;
+        if (sideX > MAX_CLAIM_SIDE || sideZ > MAX_CLAIM_SIDE) {
+            ctx.getSource().sendFailure(Component.literal("A single claim can be at most " + MAX_CLAIM_SIDE + "x"
+                    + MAX_CLAIM_SIDE + " blocks (yours is " + sideX + "x" + sideZ
+                    + "). Split it into multiple /claimland selections."));
+            return 0;
+        }
         if (claim.area() > nation.remainingBlocks()) {
             ctx.getSource().sendFailure(Component.literal("That area (" + claim.area() + " blocks) is too big. You have "
                     + nation.remainingBlocks() + " blocks left. Buy more with /nation upgrade."));

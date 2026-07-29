@@ -283,7 +283,7 @@ public final class CoreManager {
                         .withStyle(ChatFormatting.GOLD)));
     }
 
-    /** Ambient particles around all cores (called regularly). */
+    /** Ambient particles around all cores + resilience for the core entity (called regularly). */
     public static void tick(MinecraftServer server) {
         if (server.getTickCount() % 40 != 6) {
             return;
@@ -295,6 +295,19 @@ public final class CoreManager {
             ServerLevel world = coreWorld(server, nation);
             if (world == null) {
                 continue;
+            }
+            // The armor stand is purely decorative — the nation data is the
+            // source of truth. If the entity went missing while its chunk is
+            // loaded (explosion, /kill, ...), respawn it so the core stays
+            // raidable/healable. When the chunk is NOT loaded the entity is
+            // most likely just offline with it — respawning then would
+            // duplicate the stand once the chunk loads.
+            BlockPos corePos = BlockPos.containing(nation.getCoreX(), nation.getCoreY(), nation.getCoreZ());
+            if (world.hasChunkAt(corePos)) {
+                Entity bound = nation.getCoreEntityUuid() == null ? null : world.getEntity(nation.getCoreEntityUuid());
+                if (bound == null) {
+                    spawnCore(world, nation);
+                }
             }
             world.sendParticles(ParticleTypes.ENCHANT,
                     nation.getCoreX(), nation.getCoreY() + 0.5, nation.getCoreZ(), 4, 0.35, 0.3, 0.35, 0.8);
